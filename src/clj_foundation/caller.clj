@@ -39,6 +39,7 @@ delegates to implementations of the Caller protocol, so it is extensible by
 implementing Caller over additional types."
   tell)
 
+
 (defn tell!
   "Synchronous send-and-wait protocol.  Depending on the receiver, (e.g.: remote)
 synchronous behavior may not be possible, in which case this is synonymous
@@ -52,6 +53,7 @@ synchronous behavior may not be possible, in which case this is synonymous
 with asynchronous -tell.  Returns receiver"
   tell!)
 
+
 (defn ask
   "Send a message to a receiver, passing args, and return a future or promise
 that will contain the result.  This function delegates to implementations of
@@ -64,6 +66,7 @@ the Caller protocol so it is extensible by implementing Caller over additional t
 that will contain the result.  This function delegates to implementations of
 the Caller protocol so it is extensible by implementing Caller over additional types."
   ask)
+
 
 (defn ask!
   "Send a message to a receiver, passing args, and wait for the result."

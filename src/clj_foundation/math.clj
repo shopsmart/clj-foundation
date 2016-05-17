@@ -1,14 +1,14 @@
 (ns clj-foundation.math
   "Various math support helpers"
-  (require [etlsupport.patterns :refer [let-map]])
+  (require [clj-foundation.patterns :refer [let-map]])
   (:gen-class))
 
 
-(definterface IMixedNumber
-  (parts []))
+(defprotocol INumberParts
+  (parts [this]))
 
 (deftype MixedNumber [number]
-  IMixedNumber
+  INumberParts
   (parts [this]
     (let [r (rationalize number)
           n (numerator r)
@@ -22,3 +22,5 @@
 
   (toString [this]
     (str (:whole (.parts this)) " " (:frac (.parts this)))))
+
+;; (compile 'clj-foundation.math)

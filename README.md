@@ -2,7 +2,7 @@
 
 Describes and specifies best practices at Brad's Deals for working in Clojure.
 
-Libraries making additional simple things easy and hard things possible in Clojure.
+Libraries making additional simple things easy and hard things possible in Clojure that are intended for use across all Clojure projects at Brad's Deals.
 
 For example:
 

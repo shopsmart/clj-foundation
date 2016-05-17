@@ -1,9 +1,8 @@
 (ns clj-foundation.millis
   "Convert various time values to milliseconds and back"
   (:require [schema.core :as s :refer [=> =>*]]
-            [etlsupport.patterns :refer [let-map]]
-            [etlsupport.math :refer [->MixedNumber]])
-  (:import [etlsupport.math IMixedNumber])
+            [clj-foundation.patterns :refer [let-map]]
+            [clj-foundation.math :refer [->MixedNumber INumberParts]])
   (:gen-class))
 
 (defn <-seconds
@@ -55,8 +54,8 @@
   (-> m ->hours .number
       (/ 24) ->MixedNumber))
 
-(defrecord dhms [millis]
-  IMixedNumber
+(defrecord dhms []
+  INumberParts
   (parts [this]
     (let-map [millis (:millis this)
               days (->days millis)

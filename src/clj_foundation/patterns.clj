@@ -42,6 +42,16 @@
   `(def ~name (memoize (fn [] ~@body))))
 
 
+;; The Nothing object -----------------------------------------------------------------------------------------------
+
+(definterface INothing)
+(deftype Nothing [] INothing)
+
+(def nothing
+  "The value to use when there is no result."
+  (Nothing.))
+
+
 ;; Retain intermediate steps in a map -------------------------------------------------------------------------------
 
 (defmacro let-map

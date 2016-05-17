@@ -1,5 +1,6 @@
 (ns clj-foundation.io
   (:require [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.errors :as err]
             [clojure.java.io :as io]))
 
 
@@ -38,9 +39,34 @@
         (.readObject inp)))
 
 
+(s/defn read-file :- s/Str
+  [path :- s/Str]
+  (err/not-nil
+   (some-> path io/input-stream slurp)
+   (str "Cannot load file contents: " path)))
+
+
 (s/defn read-resource :- s/Str
-  "Read a resource file, with an optional override to a file in the filesystem"
-  [resource :- s/Str & override-file :- [(s/optional s/Str "Optional override file")]]
-  (if-let [optional-override-location (first override-file)]
-    (-> optional-override-location io/input-stream slurp)
-    (-> resource io/resource slurp)))
+  [resource :- s/Str]
+  (err/not-nil
+   (some-> resource io/resource slurp)
+   (str "Cannot load resource: " resource)))
+
+
+(s/defschema FileLocation {(s/optional-key :file) s/Str
+                           (s/optional-key :resource) s/Str})
+
+
+(s/defn read-file-at-location :- s/Str
+  "Read a file or a resource specified by a FileLocation map."
+  [{:keys [file resource]} :- FileLocation]
+
+  (err/not-nil
+   (or file resource)
+   "No file or resource specified to read.")
+
+  (err/not-nil
+   (cond
+     file (read-file file)
+     resource (read-resource resource))
+   (str "Cannot load file contents: " (or file resource))))
