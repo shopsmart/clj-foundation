@@ -21,11 +21,11 @@
       {:file config-file-location})))
 
 
-(defn- def-config-fn
+(s/defn def-config-fn :- (=> s/Any [s/Keyword])
   "Defines an anonymous function that returns configuration values from a file specified
   in config-file-envar, or a compiled default-config-resource if the variable config-file-envar
   is not in either the Java system properties or the operating system environment."
-  [config-file-envar default-config-resource]
+  [config-file-envar :- s/Str, default-config-resource :- s/Str]
 
   (let [file-location (find-config-file config-file-envar default-config-resource)
         settings-file (s/fn :- s/Str [file-location :- io/FileLocation]
