@@ -1,5 +1,6 @@
 (ns clj-foundation.patterns
-  (:require [schema.core :as s :refer [=> =>*]])
+  (:require [schema.core :as s :refer [=> =>*]]
+            [potemkin :refer [def-map-type]])
   (:gen-class))
 
 
@@ -44,11 +45,26 @@
 
 ;; The Nothing object -----------------------------------------------------------------------------------------------
 
-(definterface INothing)
-(deftype Nothing [] INothing)
+
+(def-map-type Nothing []
+  (get [_ k default-value]
+       default-value)
+  (assoc [_ k v] (assoc {} k v))
+  (dissoc [_ k] {})
+  (keys [_] nil)
+  (meta [_] nil)
+  (with-meta [this mta] this)
+  (toString [this] "Nothing"))
 
 (def nothing
-  "The value to use when there is no result."
+  "Nothing is the value to use when there is nothing to pass or return.  Note that Nothing
+  acts like an empty map.  This has the following implications:
+
+  * You can use it as a result in mapcat when you want nothing appended to the output collection.
+  * You can cons a value into nothing, resulting in a seq.
+  * You can assoc values into a nothing, resulting in a map.
+  * You can conj vector pairs into a nothing, resulting in a map.
+  * etc..."
   (Nothing.))
 
 
@@ -74,7 +90,7 @@
 
 
 (defmacro letfn-map
-  "A version of let-fn that returns its functions in a map.
+  "A version of letfn that returns its functions in a map.
   If a result is computed in the body, and that result is another map,
   fn-map returns the result of conj-ing the result map into the function
   map.  Otherwise it returns a vector containing the function map
