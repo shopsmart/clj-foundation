@@ -5,8 +5,7 @@
             [clojure.tools.logging :as log]
             [schema.core :as s :refer [=> =>* defschema]]
             [clj-foundation.patterns :refer [types]]
-            [clj-foundation.errors :as err]
-            [clj-foundation.io :as io])
+            [clj-foundation.errors :as err])
   (:gen-class))
 
 
@@ -49,6 +48,22 @@
     [fstr fargs]))
 
 
+(defn subst-map<-
+  "Convert a vector like found in a variadic parameter into a substitution map.  Supported cases:
+
+  * The variadic parameter is empty -> return {}.
+  * The variadic parameter contains a map -> return the map.
+  * The variadic parameter is a sequence of keys and values -> convert to map."
+
+  [variadic-parameter]
+  (cond
+    (empty? variadic-parameter) {}
+    (map? (first variadic-parameter)) (first variadic-parameter)
+    (odd? (count variadic-parameter)) (throw (IllegalArgumentException.
+                                "Expected an even number of arguments to make into kv pairs."))
+    :else (apply assoc {} variadic-parameter)))
+
+
 (defn subst<-
   "Given a string containing variables of the form ${variable-name}
   and a map with keywords corresponding to the variable names/values
@@ -62,8 +77,9 @@
   * O/S environment variables
   * Values in substitution-map"
 
-  [variable-string substitution-map]
-  (let [[fstr fargs] (format-vars variable-string substitution-map)]
+  [variable-string & substitutions]
+  (let [substitution-map (subst-map<- substitutions)
+        [fstr fargs] (format-vars variable-string substitution-map)]
     (apply format fstr fargs)))
 
 

@@ -27,7 +27,7 @@
 (def-singleton-fn ct (swap! invocations inc))
 
 (deftest singleton-test
-  (testing "Evaluating a singleton multiple times returns a constant value and only evaluates its body once"
+  (testing "(def-singleton-fn name & body) A fn that evaluates body once then always returns that result."
     (is (= 1 (ct)))
     (is (= 1 (ct)))
     (is (= 1 @invocations))))
@@ -35,17 +35,30 @@
 ;; Nothingness ---------------------------------------------------------------------------------------------
 
 (deftest nothingness-test
-  (testing "mapcat fns returning nothing add nothing to result"
-    (is (= '(0 2 4 6) (mapcat (fn [x] (if (even? x) [x] nothing)) (range 7)))))
+  (testing "An explicit value for Nothing so one can write: (s/defn foo :- (s/types s/Str Nothing) [] ....)"
 
-  (testing "cons something into nothing results in a list of something"
-    (is (= '(:foo) (cons :foo nothing))))
+    (testing "mapcat fns returning nothing add nothing to the mapcat result"
+      (is (= '(0 2 4 6) (mapcat (fn [x] (if (even? x) [x] nothing)) (range 7)))))
 
-  (testing "assoc a pair into nothing results in a map containing the k,v pair"
-    (is (= {:foo "bar"} (assoc nothing :foo "bar"))))
+    (testing "cons something into nothing results in a list of something"
+      (is (= '(:something) (cons :something nothing))))
 
-  (testing "conj vector pairs into nothing results in a map containing the k,v pairs"
-    (is (= {:foo "bar" :baz "quux"} (conj nothing [:foo "bar"] [:baz "quux"])))))
+    (testing "assoc a pair into nothing results in a map containing the k,v pair"
+      (is (= {:something "another thing"} (assoc nothing :something "another thing"))))
+
+    (testing "conj vector pairs into nothing results in a map containing the k,v pairs"
+      (is (= {:something "some thing" :another-thing "and more"}
+             (conj nothing [:something "some thing"] [:another-thing "and more"]))))
+
+    (testing "Nothing is not something."
+      (is (nil? (something? nothing))))
+
+    (testing "Something is not nothing"
+      (is (something? "something"))
+      (is (= "something" (something? "something")))
+      (is (not= nothing (something? nothing)))
+      (is (nil? (something? nothing))))))
+
 
 ;; let-map -------------------------------------------------------------------------------------------------
 

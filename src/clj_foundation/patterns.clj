@@ -4,12 +4,13 @@
   (:gen-class))
 
 
-;; Schema/type utilities --------------------------------------------------------------------------------------------
+;; Schema/type utilities ------------------------------------------------------------------------------------
 
 (defn types
-  "Returns a schema that matches the listed surface types only (e.g.: primitive or collection types but not contents)."
+  "Returns a schema that matches the listed surface types only (e.g.: primitive or collection types but
+  not contents)."
   [& schemas]
-  (let [type-names (map #(.getName %) schemas)
+  (let [type-names (map #(.getName %) schemas) ;; FIXME: This only works for schemas that are (instance? java.lang.Class)
         type-name-string (apply str (interpose ", " type-names))]
     (s/named (apply s/cond-pre schemas) type-name-string)))
 
@@ -34,7 +35,7 @@
        (apply str)))
 
 
-;; The singleton pattern --------------------------------------------------------------------------------------------
+;; The singleton pattern ------------------------------------------------------------------------------------
 
 (defmacro def-singleton-fn
   "Define a function whose return value is initilized once by executing body and that returns
@@ -43,7 +44,7 @@
   `(def ~name (memoize (fn [] ~@body))))
 
 
-;; The Nothing object -----------------------------------------------------------------------------------------------
+;; The Nothing object ---------------------------------------------------------------------------------------
 
 
 (def-map-type Nothing []
@@ -68,7 +69,15 @@
   (Nothing.))
 
 
-;; Retain intermediate steps in a map -------------------------------------------------------------------------------
+(s/defn something? :- s/Any
+  "Returns value if value is not nothing; else returns nil."
+  [value :- s/Any]
+  (if (instance? Nothing value)
+    nil
+    value))
+
+
+;; Retain intermediate steps in a map -----------------------------------------------------------------------
 
 (defmacro let-map
   "A version of let that returns its local variables in a map.

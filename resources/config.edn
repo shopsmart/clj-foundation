@@ -1,0 +1,2 @@
+{:hello {:french "bonjour"
+         :english "${ENGLISH-GREETING}"}}
