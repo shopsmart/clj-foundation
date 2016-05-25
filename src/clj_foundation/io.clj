@@ -143,6 +143,18 @@
     (slurp input)))
 
 
+(s/defn resource-as-string :- s/Str
+  "1-arg variant: Reads the specified classpath resource and returns its contents as a string.
+   2-arg variant: [\"ENVAR\" \"resource-file.txt\"] - Allows resource-file to be overridden as-in read-file."
+  [& resource-spec :- [s/Str]]
+  (let [argc (count resource-spec)]
+    (cond
+      (= argc 1) (read-file {:resource (first resource-spec)})
+      (= argc 2) (read-file [(first resource-spec) (second resource-spec)])
+      :else (throw (IllegalArgumentException.
+                    (str "resource-as-string: Illegal arg list: " resource-spec) )))))
+
+
 (defn- parse-extended-file-location [input subs]
   (if (odd? (count subs))
     [[input (first subs)] (rest subs)]

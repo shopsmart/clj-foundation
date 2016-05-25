@@ -53,6 +53,26 @@
       (is (str/includes? contents "salut")))))
 
 
+(deftest resource-as-string-test
+  (testing "Reading a resource returns its contents"
+    (let [contents (resource-as-string "config.edn")]
+      (is (< 0 (count contents)))
+      (is (str/includes? contents "bonjour"))))
+
+  (testing "Reading an overridden resource returns its contents"
+    (let [contents (resource-as-string "CONFIG-PROOOOOD" "config.edn")]
+      (is (< 0 (count contents)))
+      (is (str/includes? contents "bonjour")))
+
+    (let [contents (resource-as-string "CONFIG-PROD" "config.edn")]
+      (is (< 0 (count contents)))
+      (is (str/includes? contents "salut"))))
+
+  (testing "An incorrect number of arguments throws an exception"
+    (is (thrown? IllegalArgumentException (resource-as-string)))
+    (is (thrown? IllegalArgumentException (resource-as-string "foo" "bar" "baz")))))
+
+
 (deftest read-template-test
   (io/copy (-> "config-prod.edn" io/resource slurp) (io/file "/tmp/config-prod.edn"))
 
