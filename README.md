@@ -14,14 +14,37 @@ For example:
 This is where ShopSmart/Brad's Deals places Clojure language-level utilities that are
 useful across all Clojure projects.
 
+### Leiningen coordinates
 
-## Usage
+```clojure
+:user {:repositories [["jitpack" "https://jitpack.io"]]
 
-None yet.  So far this is a placeholder. :-D
+       :dependencies [[com.github.shopsmart/clj-foundation "version"]]}
+```
+
+where "version" currently is "[![Release](http://jitpack.io/v/com.github.shopsmart/clj-foundation.svg)](https://jitpack.io/#shopsmart/clj-foundation)".
+
+### Maven coordinates
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+	<name>Jitpack repo</name>
+	<url>https://jitpack.io</url>
+  </repository>
+</repositories>
+```
+
+* GroupId: com.github.shopsmart
+* ArtifactId: clj-foundation
+* Version: [![Release](http://jitpack.io/v/com.github.shopsmart/clj-foundation.svg)](https://jitpack.io/#shopsmart/clj-foundation)
+
 
 ## License
 
-Copyright © 2016 ShapSmart, LLC.
+Copyright © 2015 by ShopSmart, LLC.  Licensed under the Eclipse Public License v1.0.
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+## Authors
+
+David Orme
