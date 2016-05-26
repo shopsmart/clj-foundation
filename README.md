@@ -2,6 +2,8 @@
 
 Describes and specifies best practices at Brad's Deals for working in Clojure.
 
+This library only depends on Clojure, Potemkin, and Schema.  Intentionally, it does not add any additional dependencies.
+
 Libraries making additional simple things easy and hard things possible in Clojure that are intended for use across all Clojure projects at Brad's Deals.
 
 For example:
