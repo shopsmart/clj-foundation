@@ -54,20 +54,20 @@
   (-> m ->hours .number
       (/ 24) ->MixedNumber))
 
-(defrecord dhms []
+(defrecord dhms [millis]
   INumberParts
-  (parts [this]
+  (decompose [this]
     (let-map [millis (:millis this)
               days (->days millis)
-              hours (->hours (* (:frac (.parts days)) 24 60 60 1000))
-              minutes (->minutes (* (:frac (.parts hours)) 60 60 1000))
-              seconds (->seconds (* (:frac (.parts days)) 60 1000))]))
+              hours (->hours (* (:frac (.decompose days)) 24 60 60 1000))
+              minutes (->minutes (* (:frac (.decompose hours)) 60 60 1000))
+              seconds (->seconds (* (:frac (.decompose minutes)) 60 1000))]))
 
   (toString [this]
-    (let [parts (.parts this)]
+    (let [parts (.decompose this)]
       (apply str
              (map (fn [part]
-                    (let [whole (:whole (.parts (part parts)))]
+                    (let [whole (:whole (.decompose (part parts)))]
                       (if (> whole 0)
                         (str whole (second (str part)) " ")
                         "")))
