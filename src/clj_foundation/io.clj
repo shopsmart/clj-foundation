@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn])
 
-  (:import [java.io InputStream File]
+  (:import [java.io InputStream File ByteArrayInputStream]
            [java.net URI URL Socket]))
 
 
@@ -19,6 +19,12 @@
   `(with-open [stream# (clojure.java.io/writer ~f)]
      (binding [*out* stream#]
        ~@body)))
+
+
+(s/defn string-input-stream :- InputStream
+  "Return a java.io.InputStream containing the input string"
+  [input :- s/Str]
+  (ByteArrayInputStream. (.getBytes input)))
 
 
 (defn serialize
