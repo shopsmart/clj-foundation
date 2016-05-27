@@ -7,6 +7,8 @@
 
   (require [clj-foundation.patterns :refer [let-map]]
            [schema.core :as s :refer [=> =>* defschema]])
+
+  (import [clojure.lang Ratio Numbers])
   (:gen-class))
 
 
@@ -22,10 +24,16 @@
    :frac s/Num})
 
 
+(s/defn rationalize! :- Ratio
+  "Like clojure.core.rationalize, but always returns a Ratio, even if the number can be reduced to n/1"
+  [n :- s/Num]
+  (Numbers/toRatio (rationalize n)))
+
+
 (deftype MixedNumber [number]
   INumberParts
   (decompose [this]
-    (let [r (rationalize number)
+    (let [r (rationalize! number)
           n (numerator r)
           d (denominator r)]
       (if (> n d)
