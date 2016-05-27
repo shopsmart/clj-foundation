@@ -172,7 +172,7 @@
   in the file using the keyword/value pairs in substitutions.
 
   Supported sources are the same as io/input-stream, with the following additions:
-  ResourceOverrideMap and ResourceOverrideMap.  See: (doc schema-name) and (explain schema-name)
+  ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name) and (explain schema-name)
   for more information on these types."
 
   [file-location :- ExtendedFileInputs & ex-substitutions]
