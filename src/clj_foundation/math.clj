@@ -1,15 +1,30 @@
 (ns clj-foundation.math
-  "Various math support helpers"
-  (require [clj-foundation.patterns :refer [let-map]])
+  "Math abstractions.  Currently defines a protocol for numbers that can be decomposed into constituant parts.
+
+  This is then used to define a schema for Mixed Numbers and a MixedNumber type.  The MixedNumber can
+  more rationally render Clojure's Rational type as strings, but can also be used to decompose
+  decimals or rationals > 1 into mixed numbers with easy access to the whole and fractional parts."
+
+  (require [clj-foundation.patterns :refer [let-map]]
+           [schema.core :as s :refer [=> =>* defschema]])
   (:gen-class))
 
 
 (defprotocol INumberParts
-  (parts [this]))
+  "A protocol for numbers that can be split into parts."
+  (decompose [this] "Returns a map consisting of the parts that make up 'this' number."))
+
+
+(defschema MixedNumberParts
+  "Formally define a MixedNumber's Map representation as returned by the (.decompose num)
+   method."
+  {:whole s/Num
+   :frac s/Num})
+
 
 (deftype MixedNumber [number]
   INumberParts
-  (parts [this]
+  (decompose [this]
     (let [r (rationalize number)
           n (numerator r)
           d (denominator r)]
@@ -18,9 +33,8 @@
             [whole (long (/ n d))
              frac (/ (- n (* whole d)) d)])
         {:whole 0
-         :frac (/ n d)})))
+         :frac r})))
 
   (toString [this]
-    (str (:whole (.parts this)) " " (:frac (.parts this)))))
-
-;; (compile 'clj-foundation.math)
+    (let [mixed-number-parts (.decompose this)]
+      (str (:whole mixed-number-parts) " " (:frac mixed-number-parts)))))
