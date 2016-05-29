@@ -8,6 +8,8 @@ Libraries making additional simple things easy and hard things possible in Cloju
 
 ## Features
 
+The folowing is a small sample of clj-foundation's features:
+
 ### Ever had to declare a map as the result of a bunch of let variable bindings?  Now you can do that in one step with let-map.
 
 ```clojure
