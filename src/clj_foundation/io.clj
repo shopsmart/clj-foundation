@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn])
 
-  (:import [java.io InputStream File]
+  (:import [java.io InputStream File ByteArrayInputStream]
            [java.net URI URL Socket]))
 
 
@@ -19,6 +19,12 @@
   `(with-open [stream# (clojure.java.io/writer ~f)]
      (binding [*out* stream#]
        ~@body)))
+
+
+(s/defn string-input-stream :- InputStream
+  "Return a java.io.InputStream containing the input string"
+  [input :- s/Str]
+  (ByteArrayInputStream. (.getBytes input)))
 
 
 (defn serialize
@@ -166,7 +172,7 @@
   in the file using the keyword/value pairs in substitutions.
 
   Supported sources are the same as io/input-stream, with the following additions:
-  ResourceOverrideMap and ResourceOverrideMap.  See: (doc schema-name) and (explain schema-name)
+  ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name) and (explain schema-name)
   for more information on these types."
 
   [file-location :- ExtendedFileInputs & ex-substitutions]
