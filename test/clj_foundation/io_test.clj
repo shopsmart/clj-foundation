@@ -15,20 +15,20 @@
 
 (deftest normalize-file-input-test
   (testing "Return the default value as a resource when the envar is not defined"
-    (is (instance? URL (normalize-file-input ["CONFIG-PRODDD" "config.edn"]))))
+    (is (instance? URL (normalize-file-input ["CONFIG-PRODDD" "_test-config.edn"]))))
 
   (testing "Return the envar value as a file if it is defined"
-    (is (instance? File (normalize-file-input ["CONFIG-PROD" "config.edn"]))))
+    (is (instance? File (normalize-file-input ["CONFIG-PROD" "_test-config.edn"]))))
 
   (testing "If a resource or file is specified explicitly, an appropriate URL or File is returned"
-    (is (instance? URL (normalize-file-input {:resource "config.edn"})))
+    (is (instance? URL (normalize-file-input {:resource "_test-config.edn"})))
     (is (instance? File (normalize-file-input {:file "/etc/passwd"})))
     (is (thrown? RuntimeException (normalize-file-input {})))
     (is (thrown? Exception (normalize-file-input {:foo "bar"})))))
 
 
 (deftest read-file-test
-  (io/copy (-> "config-prod.edn" io/resource slurp) (io/file "/tmp/config-prod.edn"))
+  (io/copy (-> "_test-config-prod.edn" io/resource slurp) (io/file "/tmp/_test-config-prod.edn"))
 
   (testing "Reading a file returns its contents"
     (is (< 0 (count (read-file "/etc/passwd")))))
@@ -44,27 +44,27 @@
     (is (< 0 (count (read-file {:file "/etc/passwd"})))))
 
   (testing "Read a resource using extended syntax returns its contents"
-    (is (< 0 (count (read-file {:resource "config.edn"}))))
-    (is (< 0 (count (read-file ["CONFIG-PROOOOD" "config.edn"])))))
+    (is (< 0 (count (read-file {:resource "_test-config.edn"}))))
+    (is (< 0 (count (read-file ["CONFIG-PROOOOD" "_test-config.edn"])))))
 
   (testing "Reading a resource overridden by a file ENVAR returns the file's contents"
-    (let [contents (read-file ["CONFIG-PROD" "config.edn"])]
+    (let [contents (read-file ["CONFIG-PROD" "_test-config.edn"])]
       (is (< 0 (count contents)))
       (is (str/includes? contents "salut")))))
 
 
 (deftest resource-as-string-test
   (testing "Reading a resource returns its contents"
-    (let [contents (resource-as-string "config.edn")]
+    (let [contents (resource-as-string "_test-config.edn")]
       (is (< 0 (count contents)))
       (is (str/includes? contents "bonjour"))))
 
   (testing "Reading an overridden resource returns its contents"
-    (let [contents (resource-as-string "CONFIG-PROOOOOD" "config.edn")]
+    (let [contents (resource-as-string "CONFIG-PROOOOOD" "_test-config.edn")]
       (is (< 0 (count contents)))
       (is (str/includes? contents "bonjour")))
 
-    (let [contents (resource-as-string "CONFIG-PROD" "config.edn")]
+    (let [contents (resource-as-string "CONFIG-PROD" "_test-config.edn")]
       (is (< 0 (count contents)))
       (is (str/includes? contents "salut"))))
 
@@ -74,25 +74,25 @@
 
 
 (deftest read-template-test
-  (io/copy (-> "config-prod.edn" io/resource slurp) (io/file "/tmp/config-prod.edn"))
+  (io/copy (-> "_test-config-prod.edn" io/resource slurp) (io/file "/tmp/_test-config-prod.edn"))
 
   (testing "Reading a template without variables returns its contents"
-    (is (< 0 (count (read-template ["CONFIG-PROD" "config.edn"])))))
+    (is (< 0 (count (read-template ["CONFIG-PROD" "_test-config.edn"])))))
 
   (testing "Reading a template with variables but not supplying values throws an exception"
-    (is (thrown? ExceptionInfo (read-template {:resource "config.edn"}))))
+    (is (thrown? ExceptionInfo (read-template {:resource "_test-config.edn"}))))
 
   (testing "Reading a template but supplying variables returns the contents with the variables substituted."
-    (let [file-content (read-template {:resource "config.edn"} :ENGLISH-GREETING "heyo")]
+    (let [file-content (read-template {:resource "_test-config.edn"} :ENGLISH-GREETING "heyo")]
       (is (< 0 (count file-content)))
       (is (str/includes? file-content "heyo"))))
 
   (testing "Reading a template using embedded extended file syntax returns the correct contents"
-    (let [file-content (read-template "CONFIG-PROOOD" "config.edn" :ENGLISH-GREETING "heyo")]
+    (let [file-content (read-template "CONFIG-PROOOD" "_test-config.edn" :ENGLISH-GREETING "heyo")]
       (is (< 0 (count file-content)))
       (is (str/includes? file-content "heyo")))
 
-    (let [file-content (read-template "CONFIG-PROD" "config.edn" :ENGLISH-GREETING "heyo")]
+    (let [file-content (read-template "CONFIG-PROD" "_test-config.edn" :ENGLISH-GREETING "heyo")]
       (is (< 0 (count file-content)))
       (is (str/includes? file-content "yo!")))))
 
