@@ -1,4 +1,4 @@
-(defproject com.github.shopsmart/clj-foundation "0.9.3"
+(defproject com.github.shopsmart/clj-foundation "0.9.4"
   :description "Common patterns enabling simpler to be easier and harder to be possibler."
   :url "https://github.com/shopsmart/clj-foundation"
 
@@ -10,7 +10,7 @@
   :aot :all
 
   ;; Used in clj-foundation.config unit tests
-  :jvm-opts ["-DCONFIG-PROD=/tmp/config-prod.edn"]
+  :jvm-opts ["-DCONFIG-PROD=/tmp/_test-config-prod.edn"]
 
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.3.1"]

@@ -7,18 +7,18 @@
 (s/set-compile-fn-validation! true)
 
 
-(defconfig conf-prod-bad-nvar "PROOOOOD" "config.edn"
+(defconfig conf-prod-bad-nvar "PROOOOOD" "_test-config.edn"
   :ENGLISH-GREETING "heyo")
 
-(defconfig config-dev "POROOOD" "config.edn"
+(defconfig config-dev "POROOOD" "_test-config.edn"
   :ENGLISH-GREETING "G'day mate!")
 
-(defconfig config-prod "CONFIG-PROD" "config.edn"
+(defconfig config-prod "CONFIG-PROD" "_test-config.edn"
   :ENGLISH-GREETING "G'day mate!")
 
 
 (deftest read-config-element-test
-  (io/copy (-> "config-prod.edn" io/resource slurp) (io/file "/tmp/config-prod.edn"))
+  (io/copy (-> "_test-config-prod.edn" io/resource slurp) (io/file "/tmp/_test-config-prod.edn"))
 
   (testing "Read a setting from a file"
     (is (= "heyo" (conf-prod-bad-nvar :hello :english))))

@@ -1,6 +1,7 @@
 (ns clj-foundation.config
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
+            [clojure.pprint :refer [pprint]]
             [schema.core :as s :refer [=> =>* defschema]]
             [clj-foundation.templates :as template]
             [clj-foundation.patterns :as p]
@@ -9,29 +10,23 @@
   (:gen-class))
 
 
-(s/defn def-config-fn :- (=> s/Any [s/Keyword])
-  "Defines an anonymous function that returns configuration values from a file specified
-  in config-file-envar, or a compiled default-config-resource if the variable config-file-envar
-  is not in either the Java system properties or the operating system environment."
 
-  [config-file-envar :- s/Str, default-config-resource :- s/Str & substitutions :- [s/Any]]
+(s/defn read-config :- s/Any
+  "Reads config object via the path represented by keys and returns the resulting object."
+  [config & keys]
+  (try
+      (let [result (reduce (fn [collection key] (get collection key)) config keys)]
 
-  (let [read-settings-file #(edn/read-string (apply io/read-template config-file-envar default-config-resource substitutions))]
+        (if (nil? result)
+          (throw (IllegalStateException. (str "Error finding config: " keys)))
+          result))
 
-    (s/fn :- s/Any
-      [& keys :- [s/Keyword]]
-      (try
-        (let [result (reduce (fn [collection key] (collection key)) (read-settings-file) keys)]
+      (catch NullPointerException e (throw (IllegalStateException.
+                                            (str "Error finding config: " keys))))))
 
-          (if (nil? result)
-            (throw (IllegalStateException.
-                    (str "Error finding config: " keys
-                         " from file: ${" config-file-envar "} or resource " default-config-resource)))
-            result))
 
-        (catch NullPointerException e (throw (IllegalStateException.
-                                              (str "Error finding config: " keys " from file: "
-                                                   [config-file-envar default-config-resource]))))))))
+(defmacro read-settings-file [config-file-envar default-config-resource substitutions]
+  `(edn/read-string (io/read-template ~config-file-envar ~default-config-resource ~@substitutions)))
 
 
 (defmacro defconfig
@@ -57,7 +52,7 @@
 
   [config-fn-name config-file-location-envar default-config-resource & default-kvs]
 
-  `(def ~config-fn-name (def-config-fn
-                          ~config-file-location-envar
-                          ~default-config-resource
-                          ~@default-kvs)))
+  `(let [read-settings# #(read-settings-file ~config-file-location-envar
+                                             ~default-config-resource
+                                             ~default-kvs)]
+     (def ~config-fn-name (partial read-config (read-settings#)))))
