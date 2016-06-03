@@ -25,7 +25,8 @@
 
 
 (s/defn rationalize! :- Ratio
-  "Like clojure.core.rationalize, but always returns a Ratio, even if the number can be reduced to n/1"
+  "Like clojure.core.rationalize, but always returns a Ratio, even if the number can be reduced to n/1
+  See also: http://dev.clojure.org/jira/browse/CLJ-1435?page=com.atlassian.jira.plugin.system.issuetabpanels:all-tabpanel"
   [n :- s/Num]
   (Numbers/toRatio (rationalize n)))
 
