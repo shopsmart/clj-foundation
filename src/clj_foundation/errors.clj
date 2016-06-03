@@ -37,27 +37,28 @@
   (failure? [self] false))
 
 
-(s/defn expect-within
+(s/defn expect-within :- s/Any
   "Expect the condition specified by predicate to become true within timeout-millis. If this
-  does not happen, throws IllegalStateException including the error-message"
-  [timeout-millis :- s/Num, predicate :- (=> s/Bool []), error-message :- s/Str]
+  does not happen, throws IllegalStateException including the error-message.  On success, returns
+  the truthy value that predicate returned."
+  [timeout-millis :- s/Num, predicate :- (=> s/Any []), error-message :- s/Str]
+
   (let [before (.getTime (Date.))]
     (loop [completed (predicate)]
       (let [later (.getTime (Date.))]
         (if (< timeout-millis (- later before))
           (throw (IllegalStateException. error-message))
-          (when-not completed
-            (Thread/sleep 500)
-            (recur (predicate))))))))
+          (if-not completed
+            (do
+              (Thread/sleep 500)
+              (recur (predicate)))
+            completed))))))
 
 
 (defmacro try*
-  "A variant of try that translates exceptions into return values or a
-specified default value"
-  ([body]
-   `(try ~body (catch Throwable e# e#)))
-  ([body default-value-if-failure]
-   `(try ~body (catch Throwable e# ~default-value-if-failure))))
+  "A variant of try that translates exceptions into return values"
+  [& body]
+  `(try (do ~@body) (catch Throwable e# e#)))
 
 
 (defn retry*
