@@ -60,7 +60,7 @@
     (empty? variadic-parameter) {}
     (map? (first variadic-parameter)) (first variadic-parameter)
     (odd? (count variadic-parameter)) (throw (IllegalArgumentException.
-                                "Expected an even number of arguments to make into kv pairs."))
+                                              "Expected an even number of arguments to make into kv pairs."))
     :else (apply assoc {} variadic-parameter)))
 
 
