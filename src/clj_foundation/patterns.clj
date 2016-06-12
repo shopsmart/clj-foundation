@@ -15,7 +15,7 @@
     (s/named (apply s/cond-pre schemas) type-name-string)))
 
 
-(s/defn get-package
+(s/defn get-package :- s/Str
   "Returns the package name for the specified Class"
   [clazz :- Class]
   (->> (.split (.getName clazz) "\\.")
@@ -26,7 +26,7 @@
        (apply str)))
 
 
-(s/defn get-class-name
+(s/defn get-class-name :- s/Str
   "Returns the unqualified class name for the specified Class"
   [clazz :- Class]
   (->> (.split (.getName clazz) "\\.")
@@ -57,6 +57,7 @@
   (with-meta [this mta] this)
   (toString [this] "Nothing"))
 
+
 (def nothing
   "Nothing is the value to use when there is nothing to pass or return.  Note that Nothing
   acts like an empty map.  This has the following implications:
@@ -69,12 +70,35 @@
   (Nothing.))
 
 
+(s/defn Nothing! :- Class
+  "Return the Nothing type (mainly for use in Schemas)"
+  []
+  Nothing)
+
+
 (s/defn something? :- s/Any
   "Returns value if value is not nothing; else returns nil."
   [value :- s/Any]
   (if (instance? Nothing value)
     nil
     value))
+
+
+(s/defn nothing->identity :- s/Any
+  "Takes nil or nothing to the specified identity value for the type and computation in context,
+  otherwise returns value.  An identity value can be applied to a value of the given type under the
+  operation in context without affecting the result.  For example 0 is the identity value for rational
+  numbers under addition.  The empty string is the identity value for strings under concatination.
+
+  Note that Nothing is already an identity value for maps and seqs.  This function is only useful
+  for types where the Nothing type is ill-behaved (e.g.: Strings, Numbers, ...) for a given operation.
+
+  Another name for this concept is the monadic zero for the type/operation."
+  [identity-value :- s/Any, value :- s/Any]
+
+  (if (something? value)
+    value
+    identity-value))
 
 
 ;; Retain intermediate steps in a map -----------------------------------------------------------------------
