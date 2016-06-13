@@ -6,6 +6,8 @@
 
 (s/set-compile-fn-validation! true)
 
+;; Make sure our test data is in /tmp
+(io/copy (-> "_test-config-prod.edn" io/resource slurp) (io/file "/tmp/_test-config-prod.edn"))
 
 (defconfig conf-prod-bad-nvar "PROOOOOD" "_test-config.edn"
   :ENGLISH-GREETING "heyo")
