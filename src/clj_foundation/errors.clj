@@ -56,9 +56,12 @@
 
 
 (defmacro try*
-  "A variant of try that translates exceptions into return values"
-  [& body]
-  `(try (do ~@body) (catch Throwable e# e#)))
+  "A variant of try that translates exceptions into return values or a
+  specified default value"
+   ([body]
+    `(try ~body (catch Throwable e# e#)))
+   ([body default-value-if-failure]
+    `(try ~body (catch Throwable e# ~default-value-if-failure))))
 
 
 (defn retry*
