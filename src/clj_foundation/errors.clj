@@ -153,7 +153,7 @@ attempts, the last caught exception is re-thrown."
 
 
 (s/defn something-or :- s/Any
-  "If (something? value) return value, else run f and return its result."
+  "If value is not Nothing return value, else run f and return its result."
   [value :- s/Any, f :- (=> s/Any [s/Any])]
   (if (something? value)
     value
