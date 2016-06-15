@@ -1,5 +1,6 @@
 (ns clj-foundation.errors
   (:require [clojure.tools.logging :as log]
+            [clj-foundation.patterns :refer :all]
             [schema.core :as s :refer [=> =>*]])
 
   (:import [java.util Date])
@@ -7,17 +8,23 @@
   (:gen-class))
 
 
-(defn replace-nil
-  [maybe-nil replacement]
+(s/defn replace-nil :- s/Any
+  "Accepts a value that cannot be nil; if it is not nil it returns it, else it
+  returns its replacement."
+  [maybe-nil :- s/Any, replacement :- s/Any]
   (if (nil? maybe-nil)
     replacement
     maybe-nil))
 
 
-(defn not-nil [value name]
+(s/defn not-nil :- s/Any
+  "If value is not nil, returns it, else throws IllegalArgumentExceoption with
+  the message \"${name} cannot be nil\""
+  [value :- s/Any, name :- s/Str]
   (if (nil? value)
     (throw (java.lang.IllegalArgumentException. (str name " cannot be nil")))
     value))
+
 
 
 (defprotocol ComputationFailed
