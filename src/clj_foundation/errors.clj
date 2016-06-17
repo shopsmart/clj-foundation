@@ -144,27 +144,31 @@ attempts, the last caught exception is re-thrown."
     value))
 
 
-(s/defn value-or :- s/Any
-  "If value is nil or Nothing, run f and return its result.  Else, return value."
-  [value :- s/Any, f :- (=> s/Any [s/Any])]
-  (if (#{nil nothing} value)
-    (f value)
-    value))
+(s/defn throw? :- s/Any
+  "If value is a failure, throw it, wrapping it in an exception if needed;
+   else return value.  If value is a failure type other than a Throwable,
+   throws ExceptionInfo, and the original failure will be available as
+   (:failure (ex-data e))"
 
+  ([value :- s/Any]
+   (let [message (if (instance? Throwable value)
+                   (.getMessage value)
+                   (str "Error of type " (type value)))]
+     (throw? value message)))
 
-(s/defn something-or :- s/Any
-  "If value is not Nothing return value, else run f and return its result."
-  [value :- s/Any, f :- (=> s/Any [s/Any])]
-  (if (something? value)
-    value
-    (f value)))
+  ([value :- s/Any, message :- s/Str]
+   (cond
+     (failure? value) (if (instance? Throwable value)
+                        (throw (IllegalStateException. message value))
+                        (throw (ex-info message
+                                        {:failure value})))
+     :else            value)))
 
 
 (s/defn throw-or :- s/Any
-  "If value is a failure, wrap and throw it in an IllegalStateException
-  with the specified message, else run function on the value and return the
-  result"
+  "If value is a failure, wrap and throw it with the specified message, else
+   else run function on the value and return the result.  If value is a failure
+   type other than a Throwable, throws ExceptionInfo, and the original failure
+   will be available as (:failure (ex-data e))"
   [value :- s/Any, message :- s/Str, f :- (=> s/Any [s/Any])]
-  (cond
-    (failure? value) (throw (IllegalStateException. message value))
-    :else            (f value)))
+  (f (throw? value)))
