@@ -96,12 +96,13 @@
   Another name for this concept is the monadic zero for the type/operation."
   [identity-value :- s/Any, value :- s/Any]
 
-  (if (something? value)
+  (if (and (not (nil? value)) (something? value))
     value
     identity-value))
 
 
 ;; Retain intermediate steps in a map -----------------------------------------------------------------------
+
 
 (defmacro let-map
   "A version of let that returns its local variables in a map.
