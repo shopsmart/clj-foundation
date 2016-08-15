@@ -40,10 +40,7 @@
 (defn- re-seq-key-to-value
   "Returns a function closing over substitution-map for translating
   lookup keys (from the second element of re-seq tuples) to values
-  using templates/resolve-var.
-
-  Sources considered (in order) are Java system properties,
-  environment variables, and finally, values in the substitution-map."
+  using templates/resolve-var."
   [substitution-map]
   (fn [key]
     (let [lookup-key (second key)
