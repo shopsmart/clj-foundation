@@ -82,6 +82,7 @@ considered errors.  After tries attempts, the last error is returned."
           (Thread/sleep pause-millis)
           (recur (dec tries) pause-millis f args))))))
 
+
 (defn retry
   "Retry calling the specified function f & args while pausing pause-millis
 between attempts.  Uncaught exceptions are considered errors.  After tries
