@@ -70,6 +70,12 @@
   (Nothing.))
 
 
+(def use-defaults
+  "A synonmym for nothing for use in parameter lists when passing nothing really means for the
+  function to use default values."
+  nothing)
+
+
 (s/defn Nothing! :- Class
   "Return the Nothing type (mainly for use in Schemas)"
   []
