@@ -15,6 +15,12 @@
     (s/named (apply s/cond-pre schemas) type-name-string)))
 
 
+(def KeywordValuePairs
+  "A schema for keyword-value pairs.  Currently unsupported by Schema so defining once here so that once support lands,
+  there is only one place to change to enforce it everywhere."
+  [])
+
+
 (s/defn get-package :- s/Str
   "Returns the package name for the specified Class"
   [clazz :- Class]
