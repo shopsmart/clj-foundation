@@ -9,34 +9,53 @@
   (:gen-class))
 
 
+(defn seq->comma-string
+  "Generally-useful function for turning a seq into a comma-separated string."
+  [v]
+  (if (sequential? v)
+    (str/join ", " v)
+    (throw (IllegalArgumentException. (str (type v) " isn't a seq.")))))
 
-(defn- key-to-value
-  "Private implementation detail for icarrp.config.  Returns a
-  function closing over substitution-map.  This function processes
-  a tuple element from the re-seq function, attempting to use the
-  second element in the tuple as a key to look up the corresponding
-  value.  Sources considered (in order) are Java system properties,
+
+(s/defn resolve-var :- s/Any
+  "Resolves (template) variable values using the following precedence:
+
+  * (System/getProperty)
+  * (System/getenv)
+  * default-substitutions map"
+
+  [default-substitutions :- {}
+   var-name              :- s/Keyword]
+
+  (let [lookup-string (name var-name)
+        result (or
+                (System/getProperty lookup-string)
+                (get (System/getenv) lookup-string nil)
+                (var-name default-substitutions))]
+    (when-not result
+      (throw (ex-info (str "Not found: '" (first key) "'") default-substitutions)))
+    result))
+
+
+(defn- re-seq-key-to-value
+  "Returns a function closing over substitution-map for translating
+  lookup keys (from the second element of re-seq tuples) to values
+  using templates/resolve-var.
+
+  Sources considered (in order) are Java system properties,
   environment variables, and finally, values in the substitution-map."
   [substitution-map]
   (fn [key]
     (let [lookup-key (second key)
-          lookup-keyword (keyword lookup-key)
-          result (or
-                  (System/getProperty lookup-key)
-                  (get (System/getenv) lookup-key nil)
-                  (lookup-keyword substitution-map))]
-      (when-not result
-        (throw (ex-info (str "Not found: '" (first key) "'") substitution-map)))
-      result)))
-
+          lookup-keyword (keyword lookup-key)]
+      (resolve-var substitution-map lookup-keyword))))
 
 
 (def ^:private var-subst-regex #"\$\{(.*?)\}")
 
 
 (defn- format-vars
-  "Private implementation detail for icarrp.config.  This function
-  accepts a resource string and a map containing variable names mapped
+  "Accept a resource string and a map containing variable names mapped
   to values.  The resource string is converted to a format string suitable
   for the 'format' function.  It then computes the actual argument
   values that should be passed as parameters to 'format' corresponding
@@ -44,7 +63,7 @@
   [resource-string substitution-map]
   (let [fstr (str/replace resource-string #"%" "%%")
         fstr (str/replace fstr var-subst-regex "%s")
-        fargs (map (key-to-value substitution-map) (re-seq var-subst-regex resource-string))]
+        fargs (map (re-seq-key-to-value substitution-map) (re-seq var-subst-regex resource-string))]
     [fstr fargs]))
 
 
