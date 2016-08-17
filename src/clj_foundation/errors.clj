@@ -8,13 +8,75 @@
   (:gen-class))
 
 
-(s/defn exception-seq :- [Throwable]
-  "Returns a lazy sequence of all nested exceptions starting with the top-level exception and working to
-   the initial exception by recursively unrolling the (.getCause exception) for each nested exception.."
-  [exception :- Throwable]
-  (if exception
-    (lazy-seq (cons exception (exception-seq (.getCause exception))))))
 
+;; Extensible failure objects / test multimethod -------------------------------------
+
+(ns-unmap *ns* 'failure?)               ; Keep the REPL happy on reload
+
+(defmulti failure?
+  "A multimethod that determines if a computation has resulted in a failure.
+  This allows the definition of what constitutes a failure to be extended
+  to new types by the consumer.
+
+  An example of how this can function can be extended to new error types
+  exists in this namespace where we extend failure? to include timeout errors."
+  (fn [val] [(type val) val]))
+
+
+(defmethod failure? [nil nil]
+  [_]
+  "Nil is not a failure."
+  false)
+
+
+(defmethod failure? :default
+  [val]
+  "Ordinary objects are only failures if they are Throwable."
+  (instance? Throwable val))
+
+
+(s/defn exception<- :- Throwable
+  "If x is already Throwable return it, else convert it into an exception using ex-info.  The (:cause result)
+  will be the original failure value.  This is intended--though not strictly required--to be used for
+  values where (failure? value) is true."
+  [x :- s/Any]
+  (cond
+    (instance? Throwable x) x
+    :else                   (ex-info (str x) {:cause x})))
+
+
+(s/defn seq<- :- [Throwable]
+  "Converts failures into seqs of exceptions.  If the failure is already an exception (the common case),
+  it returns a seq starting with the root exception, and recursively including (.getCause e)
+  until there are no more causes.
+
+  If the failure is a seq, ensures that the result is a seq of excetions.
+
+  If the failure isn't already an exception or a seq, it is converted into one first using ex-info.  In this case,
+  the :cause in the ex-info map will be the original failure object."
+  [failure :- (s/pred failure?)]
+  (cond
+    (seq? failure)                (map exception<- failure)
+    (instance? Throwable failure) (lazy-seq (cons failure (seq<- (.getCause failure))))
+    (not (nil? failure))          (seq<- (exception<- failure))))
+
+
+(def exception-seq
+  "Deprecated.  Use errors/seq<- instead."
+  failure->seq)
+
+
+(defmacro try*
+  "A variant of try that translates exceptions into return values or a
+  specified default value.  Note that body must be a single statement.
+  If you need more than that, then wrap your statement inside a \"do\". "
+  ([body]
+   `(try ~body (catch Throwable e# e#)))
+  ([body default-value-if-failure]
+   `(try ~body (catch Throwable e# ~default-value-if-failure))))
+
+
+;; Various retry/timeout strategies ---------------------------------------------------
 
 (s/defn expect-within :- s/Any
   "Expect the condition specified by predicate to become true within timeout-millis. If this
@@ -33,35 +95,6 @@
               (recur (predicate)))
             completed))))))
 
-
-
-(ns-unmap *ns* 'failure?)               ; Keep the REPL happy on reload
-
-(defmulti failure?
-  "A multimethod that determines if a computation has resulted in a failure.
-   This allows the definition of what constitutes a failure to be extended
-   to new types by the consumer."
-  (fn [val] [(type val) val]))
-
-(defmethod failure? [nil nil] [_] false)
-
-(defmethod failure? :default
-  [val]
-  (instance? Throwable val))
-
-
-
-(defmacro try*
-  "A variant of try that translates exceptions into return values or a
-  specified default value.  Note that body must be a single statement.
-  If you need more than that, then wrap your statement inside a \"do\". "
-  ([body]
-   `(try ~body (catch Throwable e# e#)))
-  ([body default-value-if-failure]
-   `(try ~body (catch Throwable e# ~default-value-if-failure))))
-
-
-;; Various retry strategies -------------------------------------------------------
 
 (defn retry*
   "Retry calling the specified function f & args while pausing pause-millis
@@ -120,15 +153,26 @@
 (defmethod failure? [clojure.lang.Keyword TIMEOUT-ERROR] [_] true)
 
 
+
 (s/defn retry? :- s/Bool
   "Private implementation detail for retry-with-timeout.  Schemas added purely for code
   clarity."
-  [job :- Job
+  [job :- {}
    res :- s/Any]
-  (let [abort? (:abort? job)]
-    (if (= res TIMEOUT-ERROR)
-      (< (:retries job) (:max-retries job))
-      (not (abort? (exception-seq res))))))
+  (let [abort? (:abort?-fn job)
+        retry (if (= res TIMEOUT-ERROR)
+                (< (:retries job) (:max-retries job))
+                (not (abort? (exception-seq res))))
+        error-string (cond
+                       (= res TIMEOUT-ERROR)     ":TIMEOUT-ERROR"
+                       (instance? Throwable res) (.getMessage res)
+                       :else                     (str res))]
+    (if retry
+      (do
+        (log/error (:exception res) (str "RETRY: " (:job-name job) " due to "))
+        (Thread/sleep (:retry-pause-millis job))
+        true)
+      nil)))
 
 
 (defn try*-with-timeout
@@ -140,35 +184,43 @@
          TIMEOUT-ERROR))
 
 
+(defn- new-default-job
+  "Create a Job object."
+  [job-name tries pause-millis timeout-millis abort?-fn]
+
+  {:job-name job-name
+   :abort? abort?-fn
+   :timeout-millis timeout-millis
+   :retries 0
+   :max-retries tries
+   :retry-pause-millis pause-millis})
+
+
 (s/defn retry-with-timeout :- s/Any
   "Retry (apply f args) up to tries times with pause-millis time in between invocation and a
-  timeout value of timeout-millis.  On failure, abort?-fn is called with the failure value.
+  timeout value of timeout-millis.  On failure, abort?-fn is called with a vector containing the
+  unwrapped exception stack.
+
   If abort?-fn returns true, the errror is considered fatal and no more retries are attempted,
   even if retries were available."
-  [tries :- s/Num
+
+  [job-name :- String
+   tries :- s/Num
    pause-millis :- s/Num
    timeout-millis :- s/Num
    abort?-fn :- (=> s/Bool [[Throwable]])
    f :- (=> s/Any [])
    & args :- []]
-  (let [default-job {:abort? abort?-fn
-                     :job-fn f
-                     :timeout-millis timeout-millis
-                     :retries 0
-                     :max-retries tries
-                     :retry-pause-millis pause-millis}]
-    (loop [j default-job]
-      (let [res (apply try*-with-timeout timeout-millis f args)]
-        (if (failure? res)
-          (if (retry? j res)
-            (do
-              (log/error (:exception res) "A failure occurred; retrying...")
-              (Thread/sleep pause-millis)
-              (recur (update-in j :retries inc)))
-            (if (instance? Throwable res)
-              (throw res)
-              res))
-          res)))))
+
+  (loop [j (new-default-job job-name tries pause-millis timeout-millis abort?-fn)]
+    (let [res (apply try*-with-timeout timeout-millis f args)]
+      (if (failure? res)
+        (if (retry? j res)
+
+          (if (instance? Throwable res)
+            (throw res)
+            res))
+        res))))
 
 
 ;; Replace disallowed values ------------------------------------------------------------------
