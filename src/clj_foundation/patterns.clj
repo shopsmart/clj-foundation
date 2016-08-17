@@ -1,6 +1,7 @@
 (ns clj-foundation.patterns
   (:require [schema.core :as s :refer [=> =>*]]
-            [potemkin :refer [def-map-type]])
+            [potemkin :refer [def-map-type]]
+            [clj-foundation.errors :refer [failure?]])
   (:gen-class))
 
 
@@ -74,6 +75,17 @@
   * You can conj vector pairs into a nothing, resulting in a map.
   * etc..."
   (Nothing.))
+
+
+(def error
+  "error is an instance of Nothing intended for use as an error result.  It is a separate instance
+  from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
+  used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
+  behaves like the identity value for a collection."
+  (Nothing.))
+
+
+(defmethod failure? [Nothing error] [_] true)
 
 
 (def use-defaults
