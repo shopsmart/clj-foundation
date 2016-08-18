@@ -263,9 +263,10 @@
 
 
 (s/defn value-or :- s/Any
-  "If value is nil or Nothing, run f and return its result.  Else, return value."
+  "If value is nil or an instance of Nothing, run f and return its result.  Else, return value."
   [value :- s/Any, f :- (=> s/Any [s/Any])]
-  (if (#{nil nothing} value)
+  (if (or (nil? value)
+          (instance? (Nothing!) value))
     (f value)
     value))
 
