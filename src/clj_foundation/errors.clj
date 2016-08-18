@@ -1,6 +1,7 @@
 (ns clj-foundation.errors
   (:require [clojure.tools.logging :as log]
             [clj-foundation.patterns :refer :all]
+            [clj-foundation.millis :as millis]
             [schema.core :as s :refer [=> =>*]])
 
   (:import [java.util Date])
@@ -29,6 +30,12 @@
   false)
 
 
+(defmethod failure? [(Nothing!) NO-RESULT-ERROR]
+  [_]
+  "The 'error' value of the Nothing type is a failure."
+  true)
+
+
 (defmethod failure? :default
   [val]
   "Ordinary objects are only failures if they are Throwable."
@@ -36,13 +43,13 @@
 
 
 (s/defn exception<- :- Throwable
-  "If x is already Throwable return it, else convert it into an exception using ex-info.  The (:cause result)
-  will be the original failure value.  This is intended--though not strictly required--to be used for
-  values where (failure? value) is true."
+  "If x is already Throwable return it, else convert it into an exception using ex-info.  The
+  (:error-object result) will be the original value.  This is intended--though not strictly
+  required--to be used for values where (failure? value) is true."
   [x :- s/Any]
   (cond
     (instance? Throwable x) x
-    :else                   (ex-info (str x) {:cause x})))
+    :else                   (ex-info (str x) {:error-obj x})))
 
 
 (s/defn seq<- :- [Throwable]
@@ -63,7 +70,7 @@
 
 (def exception-seq
   "Deprecated.  Use errors/seq<- instead."
-  failure->seq)
+  seq<-)
 
 
 (defmacro try*
@@ -150,47 +157,52 @@
   "A timeout error value"
   ::TIMEOUT-ERROR)
 
-(defmethod failure? [clojure.lang.Keyword TIMEOUT-ERROR] [_] true)
+
+(defmethod failure? [clojure.lang.Keyword TIMEOUT-ERROR] [_]
+  "Timeout-errors are failures."
+  true)
 
 
-
-(s/defn retry? :- s/Bool
-  "Private implementation detail for retry-with-timeout.  Schemas added purely for code
-  clarity."
-  [job :- {}
-   res :- s/Any]
-  (let [abort? (:abort?-fn job)
-        retry (if (= res TIMEOUT-ERROR)
-                (< (:retries job) (:max-retries job))
-                (not (abort? (exception-seq res))))
-        error-string (cond
-                       (= res TIMEOUT-ERROR)     ":TIMEOUT-ERROR"
-                       (instance? Throwable res) (.getMessage res)
-                       :else                     (str res))]
-    (if retry
-      (do
-        (log/error (:exception res) (str "RETRY: " (:job-name job) " due to "))
-        (Thread/sleep (:retry-pause-millis job))
-        true)
-      nil)))
+(defn timeout?
+  "True if (= TIMEOUT-ERROR e)"
+  [e]
+  (= TIMEOUT-ERROR e))
 
 
-(defn try*-with-timeout
-  "(apply f args) with a specified timeout.  On success, returns the result of calling f.
-  On failure, returns either the exception or TIMEOUT-ERROR on timeout."
-  [timeout-millis f & args]
-  (deref (future (try* (apply f args)))
-         timeout-millis
-         TIMEOUT-ERROR))
+(defmacro try*-timeout-millis
+  "Execute body with a specified timeout inside a try* block so that thrown exceptions
+  are returned.
+
+  On success, returns the result of executing body.  On failure, returns either the
+  failure exception or TIMEOUT-ERROR on timeout."
+  [timeout-millis & body]
+  `(deref (future (try* (do ~@body)))
+          ~timeout-millis
+          TIMEOUT-ERROR))
 
 
-(defn- new-default-job
-  "Create a Job object."
-  [job-name tries pause-millis timeout-millis abort?-fn]
+(s/defn retry? :- (s/enum :ABORT-MAX-RETRIES :ABORT-FATAL-ERROR :RETRY-FAILURE :RETRY-TIMEOUT)
+  "Something failed.  Examine the retry count and exact failure cause and determine if we can
+  retry the operation."
+  [job    :- {}                         ; Conforms to map returned by new-default-job
+   failure-value :- s/Any]
+  (let [job-abort?       (:abort?-fn job)
+        result-exception (exception<- failure-value)]
+    (cond
+      (timeout? failure-value)              (if (< (:retries job) (:max-retries job))
+                                              :RETRY-TIMEOUT
+                                              :ABORT-MAX-RETRIES)
+
+      (job-abort? (seq<- result-exception))   :ABORT-FATAL-ERROR
+      :else                                   :RETRY-FAILURE)))
+
+
+(defn new-default-job
+  "Create a Job object.  Only public to make retry? testable."
+  [job-name tries pause-millis abort?-fn]
 
   {:job-name job-name
-   :abort? abort?-fn
-   :timeout-millis timeout-millis
+   :abort?-fn abort?-fn
    :retries 0
    :max-retries tries
    :retry-pause-millis pause-millis})
@@ -201,26 +213,38 @@
   timeout value of timeout-millis.  On failure, abort?-fn is called with a vector containing the
   unwrapped exception stack.
 
+  (failure is determined via the (failure? x) multimethod so clients can extend the set of values
+  that are considered to be failures.)
+
   If abort?-fn returns true, the errror is considered fatal and no more retries are attempted,
-  even if retries were available."
+  even if retries were available.
 
-  [job-name :- String
-   tries :- s/Num
-   pause-millis :- s/Num
+  If the last result is a failure, and that failure is Throwable, the exception is wrapped in a
+  RuntimeException and rethrown.
+
+  If the last result is a TIMEOUT-ERROR, a runtime exception is thrown.  Otherwise, the failure
+  value itself is returned as the result."
+
+  [job-name       :- String
+   tries          :- s/Num
    timeout-millis :- s/Num
-   abort?-fn :- (=> s/Bool [[Throwable]])
-   f :- (=> s/Any [])
-   & args :- []]
+   pause-millis   :- s/Num
+   abort?-fn      :- (=> s/Bool [[Throwable]])
+   f              :- (=> s/Any [])
+   & args         :- []]
 
-  (loop [j (new-default-job job-name tries pause-millis timeout-millis abort?-fn)]
-    (let [res (apply try*-with-timeout timeout-millis f args)]
-      (if (failure? res)
-        (if (retry? j res)
-
-          (if (instance? Throwable res)
-            (throw res)
-            res))
-        res))))
+  (loop [j (new-default-job job-name tries pause-millis abort?-fn)]
+    (let [result (try*-timeout-millis timeout-millis (apply f args))]
+      (if (failure? result)
+        (do
+          (case (retry? j result)
+            :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+            :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+            :RETRY-FAILURE     (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+            :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " (millis/->dhms timeout-millis)))
+            :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
+          (recur (update-in j [:retries] inc)))
+        result))))
 
 
 ;; Replace disallowed values ------------------------------------------------------------------
