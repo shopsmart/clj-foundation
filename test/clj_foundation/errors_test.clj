@@ -106,7 +106,7 @@
                      "Ooops..."
                      3
                      (millis/<-seconds 1)
-                     50
+                     (millis/<-seconds 5)
                      (constantly true)
                      #(throw (RuntimeException.)))))))
 
@@ -127,7 +127,30 @@
       (is (= 2 @attempts)))))
 
 
-(run-tests)
+;; (dis)allowed values ------------------------------------------------------------------
 
-;; Necessary when testing multimethods:
-(ns-unmap *ns* 'failure?)
+(deftest must-be-test
+  (let [foo 1
+        blatz 42
+        bar 42]
+
+    (testing "must-be throws IllegalArgumentException when body is falsey and returns result of evaluating body otherwise"
+      (is (instance? IllegalArgumentException
+                     (try* (must-be "Expected foo to equal blatz"
+                                    (= foo blatz)))))
+
+      (is (instance? IllegalArgumentException
+                     (try* (must-be "Expected non-nil"
+                                    nil))))
+
+      (is (= 42 (must-be "Meaning of life" 42))))
+
+    (testing "Must-be returns last value in a compound body"
+      (is (= 1 (must-be "One" 42 1)))
+
+      (is (instance? IllegalArgumentException
+                     (try* (must-be "Truthy" blatz (println blatz))))))))
+
+
+
+(run-tests)

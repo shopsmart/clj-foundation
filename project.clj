@@ -15,4 +15,5 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [prismatic/schema "1.1.1"]
-                 [potemkin "0.4.3"]])
+                 [potemkin "0.4.3"]
+                 [org.clojure/java.jdbc "0.6.2-alpha2"]])

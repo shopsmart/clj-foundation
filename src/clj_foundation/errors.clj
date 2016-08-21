@@ -12,7 +12,6 @@
 
 ;; Extensible failure objects / test multimethod -------------------------------------
 
-(ns-unmap *ns* 'failure?)               ; Keep the REPL happy on reload
 
 (defmulti failure?
   "A multimethod that determines if a computation has resulted in a failure.
@@ -61,7 +60,7 @@
 
   If the failure isn't already an exception or a seq, it is converted into one first using ex-info.  In this case,
   the :cause in the ex-info map will be the original failure object."
-  [failure :- (s/pred failure?)]
+  [failure :- (s/pred #(failure? %) "(failure? failure) is truthy")]
   (cond
     (seq? failure)                (map exception<- failure)
     (instance? Throwable failure) (lazy-seq (cons failure (seq<- (.getCause failure))))
@@ -183,8 +182,8 @@
 
 (s/defn retry? :- (s/enum :ABORT-MAX-RETRIES :ABORT-FATAL-ERROR :RETRY-FAILURE :RETRY-TIMEOUT)
   "Something failed.  Examine the retry count and exact failure cause and determine if we can
-  retry the operation."
-  [job    :- {}                         ; Conforms to map returned by new-default-job
+  retry the operation.  Internal API only; public so we can document using Schema and test."
+  [job                         ; Conforms to map returned by new-default-job
    failure-value :- s/Any]
   (let [job-abort?       (:abort?-fn job)
         result-exception (exception<- failure-value)]
@@ -241,13 +240,13 @@
             :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
             :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
             :RETRY-FAILURE     (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
-            :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " (millis/->dhms timeout-millis)))
+            :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
             :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
           (recur (update-in j [:retries] inc)))
         result))))
 
 
-;; Replace disallowed values ------------------------------------------------------------------
+;; (dis)allowed values ------------------------------------------------------------------
 
 
 (s/defn replace-if :- s/Any
@@ -311,3 +310,12 @@
   (cond
     (failure? value) (throw (IllegalStateException. message value))
     :else            (f value)))
+
+
+(defmacro must-be
+  "If body is truthy returns result of evaluating body, else throws IllegalArgumentException with message."
+  [message & body]
+  `(let [result# (do ~@body)]
+     (if result#
+         result#
+         (throw (IllegalArgumentException. ~message)))))
