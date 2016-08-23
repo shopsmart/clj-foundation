@@ -1,4 +1,4 @@
-(ns clj-foundation.implicit-conversions
+(ns clj-foundation.conversions
   (:require [clj-foundation.errors :refer [failure? must-be]]
             [clj-foundation.patterns :as patterns]))
 
@@ -14,7 +14,10 @@
 
 (defmulti convert
   "Convert src-instance to dest-class if possible.  Returns patterns/NO-RESULT-ERROR
-  on failure."
+  on failure.  For examplle:
+
+  * (convert Boolean/TYPE \"true\")
+  * (convert Map vararg-parameter-kvs)"
   (fn [dest-class src-instance] [dest-class (class src-instance)]))
 
 

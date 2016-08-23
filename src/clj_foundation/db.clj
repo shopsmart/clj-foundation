@@ -22,7 +22,7 @@
             [clj-foundation.templates :as template]
             [clj-foundation.millis :as millis]
             [clj-foundation.errors :as errors]
-            [clj-foundation.implicit-conversions :as c :refer [convert]]
+            [clj-foundation.conversions :as c :refer [convert]]
             [clj-foundation.patterns :refer [nothing any? KeywordValuePairs]])
 
   (:gen-class))
