@@ -41,6 +41,15 @@
        (apply str)))
 
 
+(defn arity
+ "Returns the maximum parameter count of each invoke method found by reflection
+  on the input instance. The returned value can be then interpreted as the arity
+  of the input function. The count does NOT detect variadic functions."
+  [f]
+  (let [invokes (filter #(= "invoke" (.getName %1)) (.getDeclaredMethods (class f)))]
+    (apply max (map #(alength (.getParameterTypes %1)) invokes))))
+
+
 ;; The singleton pattern ------------------------------------------------------------------------------------
 
 (defmacro def-singleton-fn
@@ -53,7 +62,7 @@
 ;; The Nothing object ---------------------------------------------------------------------------------------
 
 
-(def-map-type Nothing []
+(def-map-type Nothing [string-value]
   (get [_ k default-value]
        default-value)
   (assoc [_ k v] (assoc {} k v))
@@ -61,7 +70,7 @@
   (keys [_] nil)
   (meta [_] nil)
   (with-meta [this mta] this)
-  (toString [this] "Nothing"))
+  (toString [this] string-value))
 
 
 (def nothing
@@ -73,7 +82,17 @@
   * You can assoc values into a nothing, resulting in a map.
   * You can conj vector pairs into a nothing, resulting in a map.
   * etc..."
-  (Nothing.))
+  (Nothing. "Nothing {}"))
+
+
+(def NO-RESULT-ERROR
+  "An instance of Nothing intended for use as an error result.  It is a separate instance
+  from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
+  used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
+  behaves like the identity value for a collection.
+
+  NO-RESULT-ERROR is treated as a failure by the failure? multimethod in the errors package."
+  (Nothing. "No result error {}"))
 
 
 (def use-defaults

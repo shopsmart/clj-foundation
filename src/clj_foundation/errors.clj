@@ -168,3 +168,11 @@ attempts, the last caught exception is re-thrown."
   (cond
     (failure? value) (throw (IllegalStateException. message value))
     :else            (f value)))
+
+(defmacro must-be
+  "If body is truthy returns result of evaluating body, else throws IllegalArgumentException with message."
+  [message & body]
+  `(let [result# (do ~@body)]
+     (if result#
+         result#
+         (throw (IllegalArgumentException. ~message)))))
