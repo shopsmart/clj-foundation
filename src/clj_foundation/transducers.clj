@@ -9,7 +9,8 @@
 
   Also includes xreduce, a version of reduce that returns a transducer function
   (this function is seemingly missing from the standard library)."
-  (:require [clj-foundation.patterns :refer [arity nothing]])
+  (:require [clj-foundation.patterns :refer [arity nothing]]
+            [clj-foundation.errors :refer [must-be]])
   (:gen-class))
 
 
@@ -17,7 +18,7 @@
   "Return a transducer calling (mapcat f) for an arbitrary f.  Results are interpreted
   as follows:
 
-  * If (f x) is a map or seq, it is returned as-is.
+  * If (f x) is a map, seq, or set, it is returned as-is.
   * If (f x) is nil, patterns/nothing is returned.
   * Otherwise, the result is wrapped in a vector and returned."
   [f]
@@ -27,7 +28,7 @@
               (cond
                 (or (map? r)
                     (sequential? r)
-                    (set? r)) r
+                    (set? r))        r
                 (nil? r)             nothing
                 :else                [r])))))
 
@@ -75,7 +76,8 @@
   second element."
   [f]
   (cond
-    (vector? f)     (xreduce (first f) (second f))
+    (vector? f)     (do (must-be "Reducer function vectors must have 2 elements" (= 2 (count f)))
+                        (xreduce (first f) (second f)))
     (= (arity f) 1) (xmapcat f)
     (= (arity f) 2) (xreduce f)
     :else           (throw (IllegalArgumentException. (str "Unexpected arity: " (arity f))))))
