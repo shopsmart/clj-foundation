@@ -42,7 +42,7 @@
 
 
 (defn arity
- "Returns the maximum parameter count of each invoke method found by refletion
+ "Returns the maximum parameter count of each invoke method found by reflection
   on the input instance. The returned value can be then interpreted as the arity
   of the input function. The count does NOT detect variadic functions."
   [f]
@@ -91,7 +91,7 @@
 
 
 (def NO-RESULT-ERROR
-  "error is an instance of Nothing intended for use as an error result.  It is a separate instance
+  "An instance of Nothing intended for use as an error result.  It is a separate instance
   from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
   used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
   behaves like the identity value for a collection.
@@ -113,7 +113,7 @@
 
 
 (s/defn something? :- s/Any
-  "Returns value if value is not nothing; else returns nil."
+  "Returns value if value is not nothing ; else returns nil."
   [value :- s/Any]
   (if (instance? Nothing value)
     nil
