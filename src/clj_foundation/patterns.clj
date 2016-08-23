@@ -42,7 +42,7 @@
 
 
 (defn arity
- "Returns the maximum parameter count of each invoke method found by refletion
+ "Returns the maximum parameter count of each invoke method found by reflection
   on the input instance. The returned value can be then interpreted as the arity
   of the input function. The count does NOT detect variadic functions."
   [f]
