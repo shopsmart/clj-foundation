@@ -2,7 +2,8 @@
   "Visitor pattern implementation for arbitrary Clojure data structures."
   (:require [clojure.zip :as zip]
             [clojure.set :as set])
-  (:import [clojure.lang IPersistentSet IPersistentList IPersistentVector IPersistentMap ISeq])
+  (:import [clojure.lang IPersistentSet IPersistentList IPersistentVector IPersistentMap ISeq]
+           [java.util Map Map$Entry])
   (:gen-class))
 
 ;;---------------------------------------------------------------------------------
@@ -69,3 +70,52 @@
          (if (or (zip/end? next-loc) (= stop true))
            {:node (zip/root new-loc) :state new-state}
            (recur next-loc new-state))))))
+
+
+(defn- result-coll?
+  "Don't return Map$Entrys as results; other collection types are supported."
+  [node]
+  (and (not (instance? Map$Entry node))
+       (or (map? node) (vector? node) (list? node) (set? node) (seq? node))))
+
+
+(defn traversable-coll?
+  "Is this a kind of collection we can traverse?"
+  [node]
+  (or (map? node) (vector? node) (list? node) (set? node) (seq? node)))
+
+
+(defn root-node?
+  "Is this node at the root of the collection?  (nil? is redundant but explicit)"
+  [n]
+  (nil? (zip/up n)))
+
+
+(defn parent-container
+  "Return's the current node's parent container.  If the current node is the
+  root node, returns the current node."
+  [loc]
+  (let [parent-result (some-> loc zip/up zip/node)]
+    (cond
+      (root-node? loc)             (zip/node loc)
+      (result-coll? parent-result) parent-result
+      :else                        (parent-container (zip/up loc)))))
+
+
+(defn depth
+  "Return the number of traversals required to reach the current node starting
+  from the root node."
+  [loc]
+  (if (root-node? loc)
+    0
+    (+ (if (instance? Map$Entry (zip/node loc))
+         0
+         1)
+       (depth (zip/up loc)))))
+
+
+(defn index
+  "Return the 0-based position of the current element inside its collection.
+  This value is only meaningful if the current collection is sequential."
+  [loc]
+  (count (zip/lefts loc)))

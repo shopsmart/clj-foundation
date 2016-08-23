@@ -3,62 +3,18 @@
   (:require [clojure.zip :as zip]
             [clojure.set :as set]
             [clj-foundation.tree-visit :as v]
-            [clj-foundation.patterns :refer [nothing]])
-  (:import [java.util Map Map$Entry]))
-
-
-(defn- result-coll?
-  "Don't return Map$Entrys as results; other collection types are supported."
-  [node]
-  (and (not (instance? Map$Entry node))
-       (or (map? node) (vector? node) (list? node) (set? node) (seq? node))))
-
-
-(defn- traversable-coll?
-  "Is this a kind of collection we can traverse?"
-  [node]
-  (or (map? node) (vector? node) (list? node) (set? node) (seq? node)))
-
-
-(defn root-node?
-  "Is this node at the root of the collection?  (nil? is redundant but explicit)"
-  [n]
-  (nil? (zip/up n)))
-
-
-(defn- parent-container
-  "Return's the current node's parent container.  If the current node is the
-  root node, returns the current node."
-  [loc]
-  (let [parent-result (some-> loc zip/up zip/node)]
-    (cond
-      (root-node? loc)             (zip/node loc)
-      (result-coll? parent-result) parent-result
-      :else                        (parent-container (zip/up loc)))))
-
-
-(defn- depth [loc]
-  (if (root-node? loc)
-    0
-    (+ (if (instance? Map$Entry (zip/node loc))
-         0
-         1)
-       (depth (zip/up loc)))))
-
-
-(defn- index [loc]
-  (count (zip/lefts loc)))
+            [clj-foundation.patterns :refer [nothing]]))
 
 
 (defn- update-breadcrumb [old-path loc]
-  (let [parent (parent-container loc)
-        new-depth (depth loc)
-        new-index (index loc)
+  (let [parent (v/parent-container loc)
+        new-depth (v/depth loc)
+        new-index (v/index loc)
         new-node (zip/node loc)]
-    (if (or (map? new-node) (root-node? (zip/up loc)))
+    (if (or (map? new-node) (v/root-node? (zip/up loc)))
       old-path
       (if (map? parent)
-        (if (not (traversable-coll? new-node))
+        (if (not (v/traversable-coll? new-node))
           (conj (vec (take (- new-depth 1) old-path)) new-node)
           old-path)
         (conj (vec (take (- new-depth 1) old-path)) new-index)))))
@@ -67,7 +23,7 @@
 (defn- found-match-container
   "Add a result to state containing the breadcrumb and the parent container of the matched node."
   [state breadcrumb loc]
-  {:state (conj state [breadcrumb (parent-container loc)])})
+  {:state (conj state [breadcrumb (v/parent-container loc)])})
 
 
 (defn- found-match-node
@@ -80,7 +36,7 @@
 (defn- grep-match?
   "Is the current node a match?  If so, capture it in state using found-match-fn."
   [pattern node state loc breadcrumb found-match-fn]
-  (if-not (or (traversable-coll? node) (nil? node))
+  (if-not (or (v/traversable-coll? node) (nil? node))
     (cond
       (and (instance? java.util.regex.Pattern pattern) (re-matches pattern (.toString node))) (found-match-fn state breadcrumb loc)
       (and (string? pattern) (.contains (.toString node) pattern))                            (found-match-fn state breadcrumb loc)
