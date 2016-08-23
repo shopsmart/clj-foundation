@@ -2,8 +2,10 @@
   "Unix-style grep for arbitrary Clojure nested collections."
   (:require [clojure.zip :as zip]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clj-foundation.tree-visit :as v]
-            [clj-foundation.patterns :refer [nothing]]))
+            [clj-foundation.errors :refer [must-be]]
+            [clj-foundation.patterns :refer [nothing arity]]))
 
 
 (defn- update-breadcrumb [old-path loc]
@@ -33,28 +35,42 @@
   {:state (conj state [breadcrumb loc])})
 
 
-(defn- grep-match?
-  "Is the current node a match?  If so, capture it in state using found-match-fn."
-  [pattern node state loc breadcrumb found-match-fn]
-  (if-not (or (v/traversable-coll? node) (nil? node))
-    (cond
-      (and (instance? java.util.regex.Pattern pattern) (re-matches pattern (.toString node))) (found-match-fn state breadcrumb loc)
-      (and (string? pattern) (.contains (.toString node) pattern))                            (found-match-fn state breadcrumb loc)
-      (and (fn? pattern) (pattern node))                                                      (found-match-fn state breadcrumb loc)
-      (= pattern node)                                                                        (found-match-fn state breadcrumb loc)
-      :else                                                                                   nil)
-    nil))
+(defn- grep-predicate
+  [pattern & node-transformers]
+  (let [pred (cond
+               (instance? java.util.regex.Pattern pattern) (fn [node] (re-find pattern (.toString node)))
+               (string? pattern)                           (fn [node] (.contains (.toString node) pattern))
+               (fn? pattern)                               (do (must-be "Grep pattern functions must be arity 1" (= (arity pattern) 1))
+                                                               pattern)
+               :else                                       (fn [node] (= pattern node)))]
+    (apply comp pred (reverse node-transformers))))
+
+
+(defn- grep-match?-fn
+  "Returns a function that determines if the current node is a match using the following
+  algorithm:
+
+  * Node-transformers (if specified) are first applied to the node in the order specified.
+  * The pattern predicate is then applied to the transformed result."
+  [pattern & node-transformers]
+  (let [match? (apply grep-predicate pattern node-transformers)]
+    (fn [node state loc breadcrumb found-match-fn]
+      (when-not (or (v/traversable-coll? node)
+                    (nil? node))
+        (when (match? node)
+          (found-match-fn state breadcrumb loc))))))
 
 
 (defn- grep-tree-visitor
   "Create a visitor callback function--called for every node in the source node's graph.
   This function maintains the state of the breadcrumb vector and accumulates matches
   in the state vector."
-  [pattern grep-match-fn found-match-fn]
-  (let [breadcrumb (atom [])]
+  [pattern found-match-fn & node-transformers]
+  (let [grep-match? (apply grep-match?-fn pattern node-transformers)
+        breadcrumb (atom [])]
     (fn [node state loc]
       (swap! breadcrumb update-breadcrumb loc)
-      (grep-match-fn pattern node state loc @breadcrumb found-match-fn))))
+      (grep-match? node state loc @breadcrumb found-match-fn))))
 
 
 (defn grep
@@ -66,15 +82,16 @@
   * If pattern is a function then the truthiness of (pattern node) determines matches.
   * All other types must match literally.
 
-  If node is omitted, returns an arity-1 function with pattern bound to the specified value,
-  and the remaining parameter being the start node.
+  node-transformers (if specified) are arity 1 functions (e.g.: clojure.string/upper-case) that
+  transform the node before the pattern is matched against it.  These are applied in the order
+  specified before matching.
 
   Returns [[breadcrumb1 match1-parent] [breadcrumb2 match2-parent] ... [breadcrumbn matchn-parent]]"
-  ([pattern node]
-   (:state
-    (v/tree-visitor (v/tree-zipper node) [] [(grep-tree-visitor pattern grep-match? found-match-container)])))
-  ([pattern]
-   (partial grep pattern)))
+  [pattern node & node-transformers]
+  (:state (v/tree-visitor
+           (v/tree-zipper node)
+           []
+           [(apply grep-tree-visitor pattern found-match-container node-transformers)])))
 
 
 (defn grep-nodes
@@ -86,8 +103,9 @@
   * If pattern is a function then the truthiness of (pattern node) determines matches.
   * All other types must match literally.
 
-  If node is omitted, returns an arity-1 function with pattern bound to the specified value,
-  and the remaining parameter being the start node.
+  node-transformers (if specified) are arity 1 functions (e.g.: clojure.string/upper-case) that
+  transform the node before the pattern is matched against it.  These are applied in the order
+  specified before matching.
 
   Returns [[breadcrumb1 match1-node] [breadcrumb2 match2-node] ... [breadcrumbn matchn-node]]
 
@@ -95,8 +113,8 @@
 
   Use the functions inside clojure.zip to traverse the object graph from the match node locations
   and to retrieve the value(s) you want to manipulate."
-  ([pattern node]
-   (:state
-    (v/tree-visitor (v/tree-zipper node) [] [(grep-tree-visitor pattern grep-match? found-match-node)])))
-  ([pattern]
-   (partial grep-nodes pattern)))
+  [pattern node & node-transformers]
+  (:state (v/tree-visitor
+           (v/tree-zipper node)
+           []
+           [(apply grep-tree-visitor pattern found-match-node node-transformers)])))
