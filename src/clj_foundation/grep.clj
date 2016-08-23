@@ -38,7 +38,7 @@
 
 
 (defn- depth [loc]
-  (if (nil? (zip/up loc))
+  (if (root-node? loc)
     0
     (+ (if (instance? Map$Entry (zip/node loc))
          0
@@ -143,4 +143,4 @@
    (:state
     (v/tree-visitor (v/tree-zipper node) [] [(grep-tree-visitor pattern grep-match? found-match-node)])))
   ([pattern]
-   (partial grep-node pattern)))
+   (partial grep-nodes pattern)))

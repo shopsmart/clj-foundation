@@ -26,7 +26,8 @@
             (let [r (f x)]
               (cond
                 (or (map? r)
-                    (sequential? r)) r
+                    (sequential? r)
+                    (set? r)) r
                 (nil? r)             nothing
                 :else                [r])))))
 
@@ -84,5 +85,5 @@
   "Compute a transducer function composing fns according to Unix pipe semantics
   as defined in <-f."
   [& fns]
-  (let [transducers (map fn->transducer (flatten fns))]
+  (let [transducers (map <-f (flatten fns))]
     (apply comp transducers)))

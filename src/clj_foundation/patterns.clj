@@ -62,7 +62,7 @@
 ;; The Nothing object ---------------------------------------------------------------------------------------
 
 
-(def-map-type Nothing []
+(def-map-type Nothing [string-value]
   (get [_ k default-value]
        default-value)
   (assoc [_ k v] (assoc {} k v))
@@ -70,7 +70,7 @@
   (keys [_] nil)
   (meta [_] nil)
   (with-meta [this mta] this)
-  (toString [this] "Nothing"))
+  (toString [this] string-value))
 
 
 (def nothing
@@ -82,7 +82,17 @@
   * You can assoc values into a nothing, resulting in a map.
   * You can conj vector pairs into a nothing, resulting in a map.
   * etc..."
-  (Nothing.))
+  (Nothing. "Nothing {}"))
+
+
+(def NO-RESULT-ERROR
+  "error is an instance of Nothing intended for use as an error result.  It is a separate instance
+  from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
+  used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
+  behaves like the identity value for a collection.
+
+  NO-RESULT-ERROR is treated as a failure by the failure? multimethod in the errors package."
+  (Nothing. "No result error {}"))
 
 
 (def use-defaults
