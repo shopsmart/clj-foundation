@@ -72,17 +72,17 @@
            (recur next-loc new-state))))))
 
 
-(defn- result-coll?
-  "Don't return Map$Entrys as results; other collection types are supported."
-  [node]
-  (and (not (instance? Map$Entry node))
-       (or (map? node) (vector? node) (list? node) (set? node) (seq? node))))
-
-
 (defn traversable-coll?
   "Is this a kind of collection we can traverse?"
   [node]
   (or (map? node) (vector? node) (list? node) (set? node) (seq? node)))
+
+
+(defn- result-coll?
+  "Don't return Map$Entrys as results; other collection types are supported."
+  [node]
+  (and (not (instance? Map$Entry node))
+       (traversable-coll? node)))
 
 
 (defn root-node?
