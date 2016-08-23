@@ -86,7 +86,7 @@
 
 
 (def NO-RESULT-ERROR
-  "error is an instance of Nothing intended for use as an error result.  It is a separate instance
+  "An instance of Nothing intended for use as an error result.  It is a separate instance
   from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
   used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
   behaves like the identity value for a collection.
