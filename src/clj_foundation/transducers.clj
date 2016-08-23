@@ -1,6 +1,6 @@
 (ns clj-foundation.transducers
   "Utilities helping to make transducer functions out of regular functions.
-  Transducers can be piplined like thread-first or thread-list, but using regular
+  Transducers can be pipelined like thread-first or thread-list, but using regular
   function composition.
 
   Unlike thread-first or thread-list, a pipeline of transducers processes a single
