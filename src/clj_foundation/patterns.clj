@@ -84,16 +84,16 @@
 
 
 (def nothing
-  "Nothing is the value to use when there is nothing to pass or return.  Note that Nothing
-  acts like an empty map in a collection context and like an empty string in a string context.
+  "Nothing is the value to use when there is nothing to pass or return.  Nothing acts like an
+  empty map in a collection context and like an empty string in a string context.
+
   This has the following implications:
 
   * You can use it as a result in mapcat when you want nothing appended to the output collection.
   * You can cons a value into nothing, resulting in a seq.
   * You can assoc values into a nothing, resulting in a map.
   * You can conj vector pairs into a nothing, resulting in a map.
-  * You can concatinate it with other strings using the str function, adding nothing to the other strings.
-  * etc..."
+  * You can concatinate it with other strings using the str function, adding nothing to the other strings."
   (Nothing. "" {}))
 
 
