@@ -149,9 +149,7 @@
 (s/defn sql-vars :- [s/Str []]
   "Converts resource string using substitution-map into a tuple vector [String [binding arguments]]
   where the String is the SQL with binding question marks replacing the template variables and
-  the binding arguments vector containing the variable name corresponding to each ? binding.
-
-  Throws ExceptionInfo if a variable cannot be resolved."
+  the binding arguments vector containing the variable name corresponding to each ? binding."
   [resource-string]
   (let [sql (str/replace resource-string var-subst-regex "?")
         sql-arguments (parameters<- resource-string)]

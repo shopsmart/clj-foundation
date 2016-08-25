@@ -37,4 +37,21 @@
     (is (= ["two" "${bar}"] (parameter-list<- [:foo :bar] {:foo "two"} :partial-resolve true)))))
 
 
+(deftest sql-vars-test
+  (testing "0 variables returned"
+    (let [[sql arg-names] (sql-vars "select * from foobar;")]
+      (is (= "select * from foobar;" sql))
+      (is (= [] arg-names))))
+
+  (testing "1 variable returned"
+    (let [[sql arg-names] (sql-vars "select * from foobar where foo=${foo};")]
+      (is (= "select * from foobar where foo=?;" sql))
+      (is (= [:foo] arg-names))))
+
+  (testing "3 variables returned"
+    (let [[sql arg-names] (sql-vars "select * from foobar where foo=${foo} and bar=${bar} and baz=${foo};")]
+      (is (= "select * from foobar where foo=? and bar=? and baz=?;" sql))
+      (is (= [:foo :bar :foo] arg-names)))))
+
+
 (run-tests)
