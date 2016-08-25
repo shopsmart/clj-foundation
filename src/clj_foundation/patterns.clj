@@ -67,37 +67,53 @@
   (not-empty (filter predicate coll)))
 
 
-(def-map-type Nothing [string-value]
+(definterface IWhy
+  (why []))
+
+(def-map-type Nothing [string-value reason]
+  IWhy
   (get [_ k default-value]
        default-value)
   (assoc [_ k v] (assoc {} k v))
   (dissoc [_ k] {})
   (keys [_] nil)
-  (meta [_] nil)
+  (meta [_] {})
   (with-meta [this mta] this)
-  (toString [this] string-value))
+  (toString [this] string-value)
+  (why [_] reason))
 
 
 (def nothing
   "Nothing is the value to use when there is nothing to pass or return.  Note that Nothing
-  acts like an empty map.  This has the following implications:
+  acts like an empty map in a collection context and like an empty string in a string context.
+  This has the following implications:
 
   * You can use it as a result in mapcat when you want nothing appended to the output collection.
   * You can cons a value into nothing, resulting in a seq.
   * You can assoc values into a nothing, resulting in a map.
   * You can conj vector pairs into a nothing, resulting in a map.
+  * You can concatinate it with other strings using the str function, adding nothing to the other strings.
   * etc..."
-  (Nothing. "Nothing {}"))
+  (Nothing. "" {}))
 
 
 (def NO-RESULT-ERROR
-  "An instance of Nothing intended for use as an error result.  It is a separate instance
+  "An instance of Nothing intended for use as a generic error result.  It is a separate instance
   from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
   used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
   behaves like the identity value for a collection.
 
+  However, unlike the nothing value, in a string context, NO-RESULT-ERROR returns an error message.
+
   NO-RESULT-ERROR is treated as a failure by the failure? multimethod in the errors package."
-  (Nothing. "No result error {}"))
+  (Nothing. "No result error {}" {}))
+
+
+(s/defn no-result :- Nothing
+  "Create custom Nothingness with a specified (.toString n) and (.why n) value."
+  [string-value :- s/Str
+   reason       :- s/Any]
+  (Nothing. string-value reason))
 
 
 (def use-defaults
@@ -121,7 +137,7 @@
 
 
 (s/defn nothing->identity :- s/Any
-  "Takes nil or nothing to the specified identity value for the type and computation in context,
+  "Takes nil or Nothing to the specified identity value for the type and computation in context,
   otherwise returns value.  An identity value can be applied to a value of the given type under the
   operation in context without affecting the result.  For example 0 is the identity value for rational
   numbers under addition.  The empty string is the identity value for strings under concatination.
