@@ -25,7 +25,6 @@
                                             (str "Error finding config: " keys))))))
 
 
-;; FIXME: Shouldn't this be a defn?  Testing needed.
 (defmacro read-settings-file [config-file-envar default-config-resource substitutions]
   `(edn/read-string (io/read-template ~config-file-envar ~default-config-resource ~@substitutions)))
 
@@ -53,7 +52,9 @@
 
   [config-fn-name config-file-location-envar default-config-resource & default-kvs]
 
-  `(let [read-settings# #(read-settings-file ~config-file-location-envar
-                                             ~default-config-resource
-                                             ~default-kvs)]
-     (def ~config-fn-name (partial read-config (read-settings#)))))
+  `(def ~config-fn-name
+     (fn [& keys#]
+       (let [read-settings# #(read-settings-file ~config-file-location-envar
+                                                 ~default-config-resource
+                                                 ~default-kvs)]
+         (apply read-config (read-settings#) keys#)))))
