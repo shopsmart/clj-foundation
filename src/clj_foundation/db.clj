@@ -23,8 +23,8 @@
             [clj-foundation.millis :as millis]
             [clj-foundation.errors :as errors]
             [clj-foundation.conversions :as c :refer [convert]]
-            [clj-foundation.patterns :refer [nothing any? KeywordValuePairs]])
-
+            [clj-foundation.patterns :refer [something? nothing any? KeywordValuePairs]])
+  (:import [java.sql PreparedStatement])
   (:gen-class))
 
 
@@ -39,7 +39,8 @@
    :jdbc-timeout-millis (millis/<-hours 2)
    :retry-pause-millis 1000
    :connection nothing
-   })
+   :sql-fn nothing
+   :abort?-fn nothing})
 
 
 (def JDBC-TIMEOUT-MILLIS
@@ -62,20 +63,65 @@
   ::FATAL-EXCEPTIONS)
 
 
+(def ABORT?-FN
+  "Specify a function to call when a query fails to determine if we should retry (if retries remain)"
+  ::ABORT?-FN)
+
+
 (def CONNECTION
   "A constant for specifying the database connection to use for the operation."
   ::CONNECTION)
 
 
-(def ^:private db-setting-keys #{JDBC-TIMEOUT-MILLIS MAX-RETRIES RETRY-PAUSE-MILLIS FATAL-EXCEPTIONS CONNECTION})
+(def SQL-FN
+  "A constant for specifying the function to use for executing SQL PreparedStatements.
+  This function must have the following signature:
 
-(defn- constant->keyword [k] (keyword (.toLowerCase (name k))))
+  (=> s/Any [{s/Keyword s/Any} (* s/Any) {s/Keyword s/Any}])
+
+  The parameters are as follows:
+  * A DB spec
+  * Any number of bind variable arguments for the PreparedStatement
+  * A Map containing clojure.java.jdbc options relevent for the actual clojure.java.jdbc function
+    that will execute the SQL.
+
+  Normally this function will return whatever clojure.java.jdbc returns, but other behaviors are possible
+  (e.g.: transformations, local caching, etc.)"
+  ::SQL-FN)
 
 
-(def dbconfig-overrides
+(def JOB-NAME
+  "A constant for specifying a database job's name."
+  ::JOB-NAME)
+
+
+(def execute!
+  "A synonym for clojure.java.jdbc/execute! for use as a SQL-FN"
+  db/execute!)
+
+
+(def query
+  "A synonym for clojure.java.jdbc/query for use as a SQL-FN"
+  db/query)
+
+
+(s/defn db-setting? :- s/Any
+  "A keyword represents a setting iff it has a namespace.  Else it's a template variable name.
+
+  Returns the namespace name if present or nil if not."
+  [kw :- s/Keyword]
+  (namespace kw))
+
+
+(defn- constant->keyword
+  "Convert a namespaced database constant keyword to its corresponding (lower-case) configuration keyword."
+  [k]
+  (keyword (.toLowerCase (name k))))
+
+
+(def ^:private dbconfig-overrides
   "API for overridding values in the dbconfig-defaults map.  By default nothing is overridden.
-  Clients can override values by swapping a map into this atom containing their own values,
-  obtained via their preferred configuration mechanism."
+  Clients can override values using dbconfig-override."
   (atom nothing))
 
 
@@ -93,18 +139,33 @@
   (swap! dbconfig-overrides #(merge % (convert c/Map kvs))))
 
 
-(defn- varmaps<-
-  "Partition kv pairs into :settings kvs and :vars kvs."
-  [kvs]
+
+(def VarMaps
+  "A schema for a parsed kv argument list."
+  {:template-vars {s/Keyword s/Any}
+   :settings      {s/Keyword s/Any}
+   :dblib-params  {s/Keyword s/Any}})
+
+
+(s/defn varmaps<- :- VarMaps
+  "Partition kv pairs into :settings, :template-vars, and :dblib-params kvs.  :settings and :template-vars
+  are returned in maps.  :dblib-params is returned as a vector suitable for applying to a jdbc function.
+
+  :: Keywords that are namespaced (defined in) clj-foundation.db are considered :settings.
+  :: Keywords that are namepaced to any other namespace are considered :dblib-params.
+  :  Keywords that have no namespace qualification are considered :template-vars."
+  [kvs :- [s/Any s/Any]]
   (errors/must-be "Expecting even number of parameters" (even? (count kvs)))
   (->> kvs
        (partition 2)
        (reduce
         (fn [result [k v]]
-          (if (db-setting-keys k)
-            (update-in result [:settings] #(conj % [(constant->keyword k) v]))
-            (update-in result [:vars]     #(conj % [k v]))))
-        {:settings {} :vars {}})))
+          (let [setting-namespace (db-setting? k)]
+            (cond
+              (nil? setting-namespace)               (update-in result [:template-vars] #(conj % [k v]))
+              (= setting-namespace (.toString *ns*)) (update-in result [:settings]      #(conj % [(constant->keyword k) v]))
+              :else                                  (update-in result [:dblib-params]  #(conj % [(constant->keyword k) v])))))
+        {:settings {} :template-vars {} :dblib-params {}})))
 
 
 
@@ -142,7 +203,9 @@
 
 
 (s/defn any-fatal-exceptions? :- s/Bool
-  "If any exceptions in the exceptions seq are fatal exceptions, returns true, else returns false."
+  "If any exceptions in the exceptions seq are fatal exceptions, returns true, else returns false.
+
+  This function is suitable for use as an abort?-fn in retry-with-timeout."
   [exceptions :- [Throwable]]
   (any? fatal? exceptions))
 
@@ -163,64 +226,147 @@
   to determine if any variables remain undefined."
   [sql-or-resource & default-substitutions]
 
-  (let [source-sql               (if (.endsWith (.toUpperCase sql-or-resource) ".SQL")
-                                   (io/read-template sql-or-resource)
-                                   sql-or-resource)]
-    (apply template/subst<- source-sql default-substitutions)))
+  (let [source-sql (if (.endsWith (.toUpperCase sql-or-resource) ".SQL")
+                     (io/read-template sql-or-resource)
+                     sql-or-resource)]
+    (apply template/partial-subst<- source-sql default-substitutions)))
 
 
-(defn prepare-sql-job
-  [sql & kvs]
-  (let [{:keys [settings vars]} (varmap<- kvs)
-        sql-with-defaults  (apply resolve-sql sql vars)
-        bind-varible-names (template/interpolation-vars sql-with-defaults)
-        bind-varibles (conj {} (juxt bind-varible-names (range (count bind-varible-names))))
-        bound-sql (reduce (fn [str varname]
-                            (str/replace
-                             (re-pattern (str "\\$\\{" varname " \\}"))
-                             )) sql-with-defaults bind-varible-names)]))
+(s/defn execute-prepared-statement :- s/Any
+  "Internal API.  A partially-applied version of this function is returned by the prepare function
+  for clients to call in order to execute a prepared statement.
 
+  The only parameter that isn't set in the partially-applied version of this function is the kvs
+  varargs parameter.  This is to be used in a similar manner to prepare's kvs parameter:
 
-(defn execute-on-conn-fn
-  "Returns a SQL executor that runs the specified SQL statement.
-  Options are JDBC options to be passed to db/execute!"
-  [& options]
-  (fn [conn sql & default-substitutions]
-    (let [resolved-sql (apply resolve-sql sql default-substitutions)
-          statement (db/prepare-statement conn resolved-sql :timeout (dbconfig :timeout-seconds))]
-      (log-censored-sql resolved-sql)
-      (try
-        (apply db/execute! conn [statement] options)
-        (catch Throwable t
-          (throw (ex-info (.getMessage t) {:sql sql} t)))))))
+  * Specify values for bind variables.
+  * Specify or override database library settings.  The only setting you cannot override here is the
+    database connection.
+  * Specify settings to be passed to the sql function
 
+  Similar to prepare, keywords are interpreted as follows:
 
+  :: Keywords that are defined in clj-foundation.db are considered :settings.  These are referenced
+     via the vars that are defined inside db.clj.
+  :: Keywords that are namepaced to any other namespace are considered :dblib-params.  Legal values are
+     any keyword/value pairs supported by your sql-fn.  These will be passed to SQL-FN inside a single
+     map as the last argument after any bind variable values.
+  :  Keywords that have no namespace qualification are considered :template-vars.  Template variable
+     values are used to populate the bind variable arguments to SQL-FN.
 
-(defn query-on-conn-fn
-  "Returns a SQL executor that runs the specified SQL query.
-  Options are JDBC options to be passed to db/query
+  The following :settings parameter must be defined either in prepare or when calling
+  execute-prepared-statement:
 
-  * Note: The resulting function bypasses the job queue!"
-  [& options]
-  (fn [conn sql & default-substitutions]
+  * SQL-FN
+
+  Recommended but not required:
+
+  * JOB-NAME   (defaults to the first line of SQL if not specified)
+  * ABORT?-FN  (defaults to clj-foundation.db/any-fatal-exceptions?)
+
+  Refer to the docstrings for the above defs for more information on each setting.
+
+  Returns the results of calling:
+    (sql-fn connection [prepared-statement] bind-arg1 bind-arg2 ... bind-argn {dblib-params})"
+
+  [connection            :- {s/Any s/Any}
+   prepared-statement    :- PreparedStatement
+   sql                   :- s/Str
+   sql-argument-names    :- [s/Keyword]
+   prepare-settings      :- {s/Keyword s/Any}
+   prepare-template-vars :- {s/Keyword s/Any}
+   & kvs                 :- [s/Keyword s/Any]]
+
+  (errors/must-be "Expecting an even number of kv parameters" (even? (count kvs)))
+  (let [{:keys
+         [template-vars
+          settings
+          dblib-params]} (varmaps<- kvs)
+
+        bind-variables   (merge prepare-template-vars template-vars)
+        exec-settings    (merge prepare-settings settings)
+        config           (partial dbconfig exec-settings) ; (for DRYness)
+
+        job-name         (err/value-or (config :job-name)  (fn [_] (first (template/lines sql))))
+        sql-fn           (config :sql-fn)
+        abort?-fn        (err/value-or (config :abort?-fn) (fn [_] any-fatal-exceptions?))
+        bind-values      (vec (map #(template/resolve-var bind-variables %) sql-argument-names))]
+
+    (err/must-be "SQL-FN must be defined to execute a PreparedStatement." (something? sql-fn))
     (log-censored-sql sql)
-    (try
-      (let [resolved-sql (apply resolve-sql sql default-substitutions)
-            statement (db/prepare-statement conn resolved-sql :timeout (dbconfig :timeout-seconds))]
-        (apply db/query conn [statement] options))
-      (catch Throwable t
-        (throw (ex-info (.getMessage t) {:sql sql} t))))))
 
+    (apply err/retry-with-timeout
+           job-name
+           (config :max-retries)
+           (+ (config :jdbc-timeout-millis) (millis/<-seconds 5)) ; Give JDBC some time before we timeout
+           (config :retry-pause-millis)
+           abort?-fn
+           sql-fn connection [prepared-statement] (conj bind-values dblib-params))))
+
+
+(defn prepare
+  "Create a SQL PreparedStatement using the specified parameters.  Parameters may be template
+  variables to be substituted into the SQL string before preparing the statement, clj-foundation.db
+  settings variables such as timeout values or the connection to use, or JDBC parameters to be passed
+  to the prepare-statement function.  These are distinguished as follows:
+
+  :: Keywords that are defined in clj-foundation.db are considered :settings.  These are referenced
+     via the vars that are defined inside db.clj.
+  :: Keywords that are namepaced to any other namespace are considered :dblib-params.  Legal values are
+     any keyword/value pairs supported by clojure.java.jdbc/prepare-statement.
+  :  Keywords that have no namespace qualification are considered :template-vars.  All template variables
+     not defined in a where clause must be specified in prepare-job.  Any template variables that cannot
+     be substituted into the SQL string will be converted into SQL bind variables in the PreparedStatement.
+
+  Required :settings parameters for prepare:
+
+  * CONNECTION
+
+  Recommended to specify in prepare but may also be specified when calling the function returned by prepare
+  (Must be specified either here or there--or SQL cannot be executed):
+
+  * SQL-FN
+
+  Recommended but not required:
+
+  * JOB-NAME   (defaults to the first line of SQL if not specified)
+  * ABORT?-FN  (defaults to clj-foundation.db/any-fatal-exceptions?)
+
+  Returns a function that can accept additional kv parameters and execute the PreparedStatement."
+  [sql-template & kvs]
+  (errors/must-be "Expecting an even number of kv parameters" (even? (count kvs)))
+
+  (let [{:keys
+         [template-vars
+          settings
+          dblib-params]}     (varmaps<- kvs)
+
+        connection           (dbconfig settings :connection)
+
+        [sql
+         sql-argument-names] (template/sql-vars (apply resolve-sql sql-template template-vars))
+
+        prepared-statement   (apply db/prepare-statement
+                                    connection
+                                    sql
+                                    :timeout (dbconfig settings JDBC-TIMEOUT-MILLIS)
+                                    (flatten (vec dblib-params)))]
+
+    ;; Return a partially-applied function derived from execute-prepared-statement
+    (partial execute-prepared-statement
+             connection
+             prepared-statement
+             sql
+             sql-argument-names
+             settings
+             template-vars)))
 
 
 
 (defmacro defquery
-  "Define a function to query redshift using the SQL resulting from
+  "Define a function to query CONNECTION using the SQL resulting from
   loading the specified resource file and substituting the subsequent
-  key-value pairs for the variables defined in the resource file.  Note
-  that two variables are predefined: :public is predefined to point to
-  the public schema specified in the config and :staging is predefined
-  to point to the staging schema.
+  key-value pairs for the variables defined in the resource file.
 
   The resulting function can accept additional key-value pairs which
   may be used to either complete the query or to override the
@@ -229,16 +375,14 @@
   The resulting function may be called multiple times, specifying
   additional or different variable substitutions each time if necessary."
   [function-name sql-or-resource & default-subs]
-  `(def ~function-name (sql-fn (query-on-conn) ~sql-or-resource ~@default-subs)))
+  (let [job-name# (name function-name)]
+    `(def ~function-name (prepare sql-or-resource JOB-NAME ~job-name# SQL-FN clj-foundation.db/query ~@default-subs))))
 
 
 (defmacro defstatement
-  "Define a function to execute on redshift the SQL resulting from
+  "Define a function to execute on CONNECTION the SQL resulting from
   loading the specified resource file and substituting the subsequent
-  key-value pairs for the variables defined in the resource file.  Note
-  that two variables are predefined: :public is predefined to point to
-  the public schema specified in the config and :staging is predefined
-  to point to the staging schema.
+  key-value pairs for the variables defined in the resource file.
 
   The resulting function can accept additional key-value pairs which
   may be used to either complete the query or to override the
@@ -247,77 +391,35 @@
   The resulting function may be called multiple times, specifying
   additional or different variable substitutions each time if necessary."
   [function-name sql-or-resource & default-subs]
-  `(def ~function-name (sql-fn (execute-on-conn) ~sql-or-resource ~@default-subs)))
+  (let [job-name# (name function-name)]
+    `(def ~function-name (prepare sql-or-resource JOB-NAME ~job-name# SQL-FN clj-foundation.db/execute! ~@default-subs))))
 
 
-;; (defn query-fn
-;;   "Create a function to query redshift using the SQL resulting from
-;;   loading the specified resource file and substituting the subsequent
-;;   key-value pairs for the variables defined in the resource file.  Note
-;;   that two variables are predefined: :public is predefined to point to
-;;   the public schema specified in the config and :staging is predefined
-;;   to point to the staging schema.
-
-;;   The resulting function can accept additional key-value pairs which
-;;   may be used to either complete the query or to override the
-;;   default values.
-
-;;   The resulting function may be called multiple times, specifying
-;;   additional or different variable substitutions each time if necessary."
-;;   (apply sql-fn (query-on-conn)
-;;          sql-or-resource
-;;          default-substitutions)
-;;   [sql-or-resource & default-substitutions])
+(defn execute!
+  "Execute on CONNECTION the specified SQL or the SQL in the specified
+  resource file, substituting the subsequent key-value pairs for the
+  variables defined in the resource file.  Note that two variables are
+  predefined: :public is predefined to point to the public schema
+  specified in the config and :staging is predefined to point to the
+  staging schema."
+  [sql-or-resource & variable-key-vals]
+  (let [sql-fn (apply prepare sql-or-resource SQL-FN execute! variable-key-vals)]
+    (sql-fn)))
 
 
-;; (defn execute!-fn
-;;   "Create a function to execute on redshift the SQL resulting from
-;;   loading the specified resource file and substituting the subsequent
-;;   key-value pairs for the variables defined in the resource file.  Note
-;;   that two variables are predefined: :public is predefined to point to
-;;   the public schema specified in the config and :staging is predefined
-;;   to point to the staging schema.
-
-;;   The resulting function can accept additional key-value pairs which
-;;   may be used to either complete the query or to override the
-;;   default values.
-
-;;   The resulting function may be called multiple times, specifying
-;;   additional or different variable substitutions each time if necessary."
-;;   [sql-or-resource & default-substitutions]
-;;   (apply sql-fn (execute-on-conn)
-;;          sql-or-resource
-;;          :public *public-schema*
-;;          :staging *staging-schema*
-;;          default-substitutions))
+(defn query
+  "Query CONNECTION using the specified SQL or the SQL in the specified
+  resource file, substituting the subsequent key-value pairs for the
+  variables defined in the resource file.  Note that two variables are
+  predefined: :public is predefined to point to the public schema
+  specified in the config and :staging is predefined to point to the
+  staging schema."
+  [sql-or-resource & variable-key-vals]
+  (let [sql-fn (apply prepare sql-or-resource SQL-FN query variable-key-vals)]
+    (sql-fn)))
 
 
-
-;; (defn execute!
-;;   "Execute on redshift the specified SQL or the SQL in the specified
-;;   resource file, substituting the subsequent key-value pairs for the
-;;   variables defined in the resource file.  Note that two variables are
-;;   predefined: :public is predefined to point to the public schema
-;;   specified in the config and :staging is predefined to point to the
-;;   staging schema."
-;;   [sql-or-resource & variable-key-vals]
-;;   (let [sql-statements (apply execute!-fn sql-or-resource variable-key-vals)]
-;;     (sql-statements)))
-
-
-;; (defn query
-;;   "Query redshift using the specified SQL or the SQL in the specified
-;;   resource file, substituting the subsequent key-value pairs for the
-;;   variables defined in the resource file.  Note that two variables are
-;;   predefined: :public is predefined to point to the public schema
-;;   specified in the config and :staging is predefined to point to the
-;;   staging schema."
-;;   [sql-or-resource & variable-key-vals]
-;;   (let [sql-query (apply query-fn sql-or-resource variable-key-vals)]
-;;     (sql-query)))
-
-
-(defschema QuerySubstitutions [])       ;; Really [(* Keyword Any)], but Schema doesn't know how to say that
+(defschema QuerySubstitutions [s/Keyword s/Any])       ;; Really [(* Keyword Any)], but Schema doesn't know how to say that
 
 
 (s/defn forall-substitutions :- {}      ; Return any map
@@ -411,68 +513,69 @@
     [keys variable-key-vals]))
 
 
-;; (defn keyed-query-fn
-;;   "Create a function to run the specified query or sql resource file,
-;;   extract the (concatinated) key values from each result row, and transform
-;;   the result into a map keyed by each row's (concatinated) key, with the
-;;   row itself being the value.
+(defn keyed-query-fn
+  "Create a function to run the specified query or sql resource file on CONNECTION,
+  extract the (concatinated) key values from each result row, and transform
+  the result into a map keyed by each row's (concatinated) key, with the
+  row itself being the value.
 
-;;   The initial element of the variadic parameter may optionally be a
-;;   vector of keywords specifying the (concatinated) key of the table.
-;;   The rest must be key-value pairs specifying default substitution
-;;   variable values.
+  The initial element of the variadic parameter may optionally be a
+  vector of keywords specifying the (concatinated) key of the table.
+  The rest must be key-value pairs specifying default substitution
+  variable values.
 
-;;   If the key vector is not specified when creating the query function,
-;;   it must be specified when calling the query function.
+  If the key vector is not specified when creating the query function,
+  it must be specified when calling the query function.
 
-;;   If the key vector does not uniquely identify a row in the result set,
-;;   keys identifying multiple rows will be associated with a vector
-;;   containing the rows referenced by the key."
-;;   [sql-or-resource & keys-or-variable-key-vals]
-;;   (let [[key-columns variable-key-vals] (extract-keys keys-or-variable-key-vals nil)]
-;;     (fn [& keys-or-extra-key-vals]
-;;       (let [[key-columns extra-key-vals] (extract-keys keys-or-extra-key-vals key-columns)
-;;             query (apply sql-fn (query-on-conn) sql-or-resource variable-key-vals)]
-;;         (if (empty? key-columns)
-;;           (throw (IllegalArgumentException. "A keyed query must specify the column(s) that make up the key.")))
-;;         (query-and-extract-key #(apply query extra-key-vals) key-columns)))))
+  If the key vector does not uniquely identify a row in the result set,
+  keys identifying multiple rows will be associated with a vector
+  containing the rows referenced by the key."
+  [sql-or-resource & keys-or-variable-key-vals]
+  (let [[key-columns variable-key-vals] (extract-keys keys-or-variable-key-vals nil)
+        query (apply prepare sql-or-resource SQL-FN query variable-key-vals)]
 
-
-;; (defn keyed-query
-;;   "Run a query returnining keyed results.
-
-;;   The initial element of the variadic parameter must be a
-;;   vector of keywords specifying the (concatinated) key of the table.
-
-;;   The remaining parameters must be key-value pairs specifying substitution
-;;   variable values for any variables defined in the SQL code or the SQL
-;;   resource file."
-;;   [sql-or-resource & keys-or-variable-key-vals]
-;;   (let [keyed-query (apply keyed-query-fn sql-or-resource keys-or-variable-key-vals)]
-;;     (keyed-query)))
+    (fn [& keys-or-extra-key-vals]
+      (let [[key-columns extra-key-vals] (extract-keys keys-or-extra-key-vals key-columns)]
+        (if (empty? key-columns)
+          (throw (IllegalArgumentException. "A keyed query must specify the column(s) that make up the key.")))
+        (query-and-extract-key #(apply query extra-key-vals) key-columns)))))
 
 
-;; (defmacro defkeyedquery
-;;   "Define the specified query function, extract the (concatinated) key values from
-;;   each result row, and transform the result into a map keyed by each row's
-;;   (concatinated) key, with the row itself being the value.
+(defn keyed-query
+  "Run a query returnining keyed results.
 
-;;   The key is specified as a vector of keywords describing the (concatinated) key
-;;   of the query results.  This key must be the initial argument after the query itself.
+  The initial element of the variadic parameter must be a
+  vector of keywords specifying the (concatinated) key of the table.
 
-;;   If the key vector does not uniquely identify a row in the result set,
-;;   keys identifying multiple rows will be associated with a vector
-;;   containing the rows referenced by the key."
-;;   [function-name sql-or-resource & default-subs]
-;;   `(def ~function-name (keyed-query-fn ~sql-or-resource ~@default-subs)))
+  The remaining parameters must be key-value pairs specifying substitution
+  variable values for any variables defined in the SQL code or the SQL
+  resource file."
+  [sql-or-resource & keys-or-variable-key-vals]
+  (let [keyed-query (apply keyed-query-fn sql-or-resource keys-or-variable-key-vals)]
+    (keyed-query)))
 
 
-;; (defn keystring->where-conditions
-;;   "Transform a keyed query result's key string into a string containing where clause
-;;   conditions usable in a sql query to retrieve any row again that utilizes the same
-;;   key columns/values."
-;;   [key-string]
-;;   (let [key-string-parts (str/split key-string #"^'|' && '|'->'|'$")
-;;         col-value-pairs (partition 2 (rest key-string-parts))
-;;         where-conditions (map (fn [[col value]] (str col "='" value "'")) col-value-pairs)]
-;;     (str/join " and " where-conditions)))
+(defmacro defkeyedquery
+  "Define the specified query function, extract the (concatinated) key values from
+  each result row, and transform the result into a map keyed by each row's
+  (concatinated) key, with the row itself being the value.
+
+  The key is specified as a vector of keywords describing the (concatinated) key
+  of the query results.  This key must be the initial argument after the query itself.
+
+  If the key vector does not uniquely identify a row in the result set,
+  keys identifying multiple rows will be associated with a vector
+  containing the rows referenced by the key."
+  [function-name sql-or-resource & default-subs]
+  `(def ~function-name (keyed-query-fn ~sql-or-resource ~@default-subs)))
+
+
+(defn keystring->where-conditions
+  "Transform a keyed query result's key string into a string containing where clause
+  conditions usable in a sql query to retrieve any row again that utilizes the same
+  key columns/values."
+  [key-string]
+  (let [key-string-parts (str/split key-string #"^'|' && '|'->'|'$")
+        col-value-pairs (partition 2 (rest key-string-parts))
+        where-conditions (map (fn [[col value]] (str col "='" value "'")) col-value-pairs)]
+    (str/join " and " where-conditions)))
