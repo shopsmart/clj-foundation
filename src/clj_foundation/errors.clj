@@ -229,8 +229,8 @@
    timeout-millis :- s/Num
    pause-millis   :- s/Num
    abort?-fn      :- (=> s/Bool [[Throwable]])
-   f              :- (=> s/Any [])
-   & args         :- []]
+   f              :- (=> s/Any [s/Any])
+   & args         :- [s/Any]]
 
   (loop [j (new-default-job job-name tries pause-millis abort?-fn)]
     (let [result (try*-timeout-millis timeout-millis (apply f args))]
