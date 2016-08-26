@@ -6,6 +6,8 @@
             [schema.core :as s :refer [=> =>* defschema]]
             [clj-foundation.patterns :as p :refer [types nothing]]
             [clj-foundation.errors :as err :refer [try*]])
+  (:import [clojure.lang ISeq]
+           [java.io BufferedReader StringReader])
   (:gen-class))
 
 
@@ -31,6 +33,15 @@
   (if (sequential? v)
     (str/join ", " v)
     (throw (IllegalArgumentException. (str (type v) " isn't a seq.")))))
+
+
+(s/defn lines :- ISeq
+  "Like clojure.core/line-seq but accepts String in addition to java.io.BufferedReader."
+  [source :- (types BufferedReader s/Str)]
+  (let [source' (if (string? source)
+                  (BufferedReader. (StringReader. source))
+                  source)]
+    (line-seq source')))
 
 
 (s/defn resolve-var :- s/Any
