@@ -18,7 +18,7 @@
 (def KeywordValuePairs
   "A schema for keyword-value pairs.  Currently unsupported by Schema so defining once here so that once support lands,
   there is only one place to change to enforce it everywhere."
-  [])
+  [s/Keyword s/Any])
 
 
 (s/defn get-package :- s/Str
@@ -191,3 +191,22 @@
              (conj mapfns# result#)
              [mapfns# result#])
            mapfns#)))))
+
+
+(defmacro f
+  "A \"where\" form for anonymous functions.  e.g.:
+
+  * If the body of the function is a single function call, the parens may be omitted.
+    (f x y => + x y)
+    (f x y & more => apply + x y more)
+
+  * If more statements are needed, they are wrapped in an implicit (do ...)
+    (f => (log/warning \"She's about to blow!\")
+          (self-destruct))"
+  [& all]
+  (let [args (take-while #(not (= (name %1) "=>")) all)
+        argCount (count args)
+        expr (last (split-at (+ argCount 1) all))]
+    (if (seq? (first expr))
+      `(fn ~(vec args) (do ~@expr))
+      `(fn ~(vec args) (~@expr)))))
