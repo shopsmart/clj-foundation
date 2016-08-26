@@ -315,7 +315,7 @@
   :: Keywords that are namepaced to any other namespace are considered :dblib-params.  Legal values are
      any keyword/value pairs supported by clojure.java.jdbc/prepare-statement.
   :  Keywords that have no namespace qualification are considered :template-vars.  All template variables
-     not defined in a where clause must be specified in prepare-job.  Any template variables that cannot
+     not defined in a where clause must be specified in prepare.  Any template variables that cannot
      be substituted into the SQL string will be converted into SQL bind variables in the PreparedStatement.
 
   Required :settings parameters for prepare:
