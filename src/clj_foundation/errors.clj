@@ -207,6 +207,13 @@
    :retry-pause-millis pause-millis})
 
 
+(s/defrecord RetrySettings
+    [tries          :- s/Num
+     timeout-millis :- s/Num
+     pause-millis   :- s/Num
+     abort?-fn      :- (=> s/Bool [[Throwable]])])
+
+
 (s/defn retry-with-timeout :- s/Any
   "Retry (apply f args) up to tries times with pause-millis time in between invocation and a
   timeout value of timeout-millis.  On failure, abort?-fn is called with a vector containing the
@@ -225,25 +232,26 @@
   value itself is returned as the result."
 
   [job-name       :- String
-   tries          :- s/Num
-   timeout-millis :- s/Num
-   pause-millis   :- s/Num
-   abort?-fn      :- (=> s/Bool [[Throwable]])
+   settings       :- RetrySettings
    f              :- (=> s/Any [s/Any])
    & args         :- [s/Any]]
 
-  (loop [j (new-default-job job-name tries pause-millis abort?-fn)]
-    (let [result (try*-timeout-millis timeout-millis (apply f args))]
-      (if (failure? result)
-        (do
-          (case (retry? j result)
-            :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
-            :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
-            :RETRY-FAILURE     (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
-            :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
-            :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
-          (recur (update-in j [:retries] inc)))
-        result))))
+  (let [tries          (:tries settings)
+        timeout-millis (:timeout-millis settings)
+        pause-millis   (:pause-millis settings)
+        abort?-fn      (:abort?-fn settings)]
+    (loop [j (new-default-job job-name tries pause-millis abort?-fn)]
+      (let [result (try*-timeout-millis timeout-millis (apply f args))]
+        (if (failure? result)
+          (do
+            (case (retry? j result)
+              :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+              :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :RETRY-FAILURE     (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+              :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+              :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
+            (recur (update-in j [:retries] inc)))
+          result)))))
 
 
 ;; (dis)allowed values ------------------------------------------------------------------
@@ -282,6 +290,17 @@
   [value :- s/Any, name :- s/Str]
   (if (nil? value)
     (throw (java.lang.IllegalArgumentException. (str name " cannot be nil")))
+    value))
+
+
+(s/defn not-failure :- s/Any
+  "If value is not a failure, returns it, else throws IllegalArgumentExceoption with
+  the specified message"
+  [value :- s/Any, message :- s/Str]
+  (if (nil? value)
+    (if (instance? Throwable value)
+      (throw (java.lang.IllegalStateException. message value))
+      (throw (java.lang.IllegalStateException. (str "[" value "]: " message))))
     value))
 
 
