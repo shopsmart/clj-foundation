@@ -157,6 +157,13 @@
     [fstr fargs]))
 
 
+(s/defn kv-vector<- :- [s/Keyword s/Any]
+  "Translate a map of Keywords -> anything to a vector in the form:
+  [:key1 val1 :key2 val2 ... :keyn valn]"
+  [m :- {s/Keyword s/Any}]
+  (flatten (vec m)))
+
+
 (s/defn sql-vars :- [s/Str []]
   "Converts resource string using substitution-map into a tuple vector [String [binding arguments]]
   where the String is the SQL with binding question marks replacing the template variables and
