@@ -1,5 +1,6 @@
 (ns clj-foundation.patterns
   (:require [schema.core :as s :refer [=> =>*]]
+            [clojure.string :as str]
             [potemkin :refer [def-map-type]])
   (:gen-class))
 
@@ -193,6 +194,9 @@
            mapfns#)))))
 
 
+;; FP Utilities --------------------------------------------------------------------------------------------
+
+
 (defmacro f
   "A \"where\" form for anonymous functions.  e.g.:
 
@@ -204,9 +208,15 @@
     (f => (log/warning \"She's about to blow!\")
           (self-destruct))"
   [& all]
-  (let [args (take-while #(not (= (name %1) "=>")) all)
-        argCount (count args)
+  (let [args# (vec (take-while #(or (vector? %1)
+                                    (map? %1)
+                                    (not (= (name %1) "=>")))
+                               all))
+        argCount (count args#)
         expr (last (split-at (+ argCount 1) all))]
-    (if (seq? (first expr))
-      `(fn ~(vec args) (do ~@expr))
-      `(fn ~(vec args) (~@expr)))))
+    (cond
+      (seq? (first expr))    `(fn ~args# (do ~@expr))
+      (vector? (first expr)) `(fn ~args# ~@expr)
+      (set? (first expr))    `(fn ~args# ~@expr)
+      (map? (first expr))    `(fn ~args# ~@expr)
+      :else                  `(fn ~args# (~@expr)))))
