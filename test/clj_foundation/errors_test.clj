@@ -82,10 +82,7 @@
     (is (= "Results!!!"
            (retry-with-timeout
             "Success"
-            1
-            (millis/<-seconds 1)
-            (millis/<-seconds 5)
-            (constantly false)
+            (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
             (constantly "Results!!!")))))
 
   (testing "Taking too much time fails!"
@@ -93,10 +90,7 @@
                    (try*
                     (retry-with-timeout
                      "Sloooow"
-                     3
-                     (millis/<-seconds 1)
-                     50
-                     (constantly false)
+                     (->RetrySettings 3 (millis/<-seconds 1) 50 (constantly false))
                      #(Thread/sleep (millis/<-seconds 2)))))))
 
   (testing "Fatal errors abort retrying"
@@ -104,10 +98,7 @@
                    (try*
                     (retry-with-timeout
                      "Ooops..."
-                     3
-                     (millis/<-seconds 1)
-                     (millis/<-seconds 5)
-                     (constantly true)
+                     (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly true))
                      #(throw (RuntimeException.)))))))
 
   (testing "If at first you don't succeed, try, try again..."
@@ -119,10 +110,7 @@
       (is (= "Finally--success!"
              (retry-with-timeout
               "Persistance pays off"
-              3
-              (millis/<-seconds 1)
-              (millis/<-seconds 5)
-              (constantly false)
+              (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
               job-fn)))
       (is (= 2 @attempts)))))
 
