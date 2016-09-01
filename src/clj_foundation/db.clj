@@ -21,10 +21,11 @@
             [clj-foundation.config :refer [read-config]]
             [clj-foundation.templates :as template]
             [clj-foundation.millis :as millis]
-            [clj-foundation.errors :as errors]
+            [clj-foundation.errors :as errors :refer [try* failure?]]
             [clj-foundation.conversions :as c :refer [convert]]
-            [clj-foundation.patterns :refer [something? nothing any? KeywordValuePairs]])
-  (:import [java.sql PreparedStatement])
+            [clj-foundation.patterns :as p :refer [f types something? nothing Nothing! any? KeywordValuePairs]])
+  (:import [java.sql PreparedStatement]
+           [clj_foundation.patterns FnMap])
   (:gen-class))
 
 
@@ -36,8 +37,9 @@
    :fatal-exceptions ["only table or database owner can vacuum it"
                       "only table or database owner can analyze it"]
    :max-retries 5
-   :jdbc-timeout-millis (millis/<-hours 2)
+   :jdbc-timeout-millis 5000
    :retry-pause-millis 1000
+   :db-spec nothing
    :connection nothing
    :sql-fn nothing
    :abort?-fn nothing})
@@ -68,8 +70,14 @@
   ::ABORT?-FN)
 
 
+(def DB-SPEC
+  "The clojure.java.jdbc db-spec map for opening a database connection."
+  ::db-spec)
+
+
 (def CONNECTION
-  "A constant for specifying the database connection to use for the operation."
+  "A constant for specifying the database connection to use for the operation.  This is the result of
+  applying get-connection or with-db-connection to a DB-SPEC."
   ::CONNECTION)
 
 
@@ -95,16 +103,6 @@
   ::JOB-NAME)
 
 
-(def execute!
-  "A synonym for clojure.java.jdbc/execute! for use as a SQL-FN"
-  db/execute!)
-
-
-(def query
-  "A synonym for clojure.java.jdbc/query for use as a SQL-FN"
-  db/query)
-
-
 (s/defn db-setting? :- s/Any
   "A keyword represents a setting iff it has a namespace.  Else it's a template variable name.
 
@@ -122,21 +120,32 @@
 (def ^:private dbconfig-overrides
   "API for overridding values in the dbconfig-defaults map.  By default nothing is overridden.
   Clients can override values using dbconfig-override."
-  (atom nothing))
+  (atom {:job-name  #(first (template/lines %))
+         :abort?-fn any-fatal-exceptions?
+         :sql-fn    nothing}))          ; Must be overridden later on
 
 
-(defn- dbconfig
+(defn dbconfig
   "Return config values for the database library"
   [override-map & keys]
-  (let [config-values (merge dbconfig-defaults @dbconfig-overrides override-map)]
-    (apply read-config config-values keys)))
+  (let [config-keys   (map constant->keyword keys)
+        override-map' (into {} (map (f [k v] => [(constant->keyword k) v]) override-map))
+        config-values (merge dbconfig-defaults @dbconfig-overrides override-map')]
+    (apply read-config config-values config-keys)))
+
+
+(defn- kvs->kv-pairs
+  [[k v]]
+  [(constant->keyword k) v])
 
 
 (defn dbconfig-override
   "Override or set dbconfig values for this session.  dbconfig keys (above) must identify the config
   constant to change."
   [& kvs]
-  (swap! dbconfig-overrides #(merge % (convert c/Map kvs))))
+  (err/not-nil "kvs cannot be nil" kvs)
+  (let [overrides (apply assoc {} (mapcat kvs->kv-pairs (partition 2 kvs)))]
+    (swap! dbconfig-overrides #(merge % overrides))))
 
 
 
@@ -147,24 +156,26 @@
    :dblib-params  {s/Keyword s/Any}})
 
 
+(def this-namespace (.toString *ns*))
+
 (s/defn varmaps<- :- VarMaps
-  "Partition kv pairs into :settings, :template-vars, and :dblib-params kvs.  :settings and :template-vars
-  are returned in maps.  :dblib-params is returned as a vector suitable for applying to a jdbc function.
+  "Partition kv pairs into :settings, :template-vars, and :dblib-params kvs maps.
 
   :: Keywords that are namespaced (defined in) clj-foundation.db are considered :settings.
   :: Keywords that are namepaced to any other namespace are considered :dblib-params.
   :  Keywords that have no namespace qualification are considered :template-vars."
-  [kvs :- [s/Any s/Any]]
+  [kvs :- [s/Keyword s/Any]]
   (errors/must-be "Expecting even number of parameters" (even? (count kvs)))
+
   (->> kvs
        (partition 2)
        (reduce
         (fn [result [k v]]
           (let [setting-namespace (db-setting? k)]
             (cond
-              (nil? setting-namespace)               (update-in result [:template-vars] #(conj % [k v]))
-              (= setting-namespace (.toString *ns*)) (update-in result [:settings]      #(conj % [(constant->keyword k) v]))
-              :else                                  (update-in result [:dblib-params]  #(conj % [(constant->keyword k) v])))))
+              (nil? setting-namespace)             (update-in result [:template-vars] #(conj % [k v]))
+              (= setting-namespace this-namespace) (update-in result [:settings]      #(conj % [(constant->keyword k) v]))
+              :else                                (update-in result [:dblib-params]  #(conj % [(constant->keyword k) v])))))
         {:settings {} :template-vars {} :dblib-params {}})))
 
 
@@ -195,11 +206,14 @@
 
 ;; Error handling ---------------------------------------------------------------------
 
+
 (s/defn fatal? :- s/Bool
   "Returns true if this exception's message matches any of the substrings in fatal-exceptions and
   false otherwise."
   [e :- Throwable]
-  (any? #(.contains (.getMessage e) %) (dbconfig :fatal-exceptions)))
+  (let [msg                      (err/replace-nil (.getMessage e) "")
+        fatal-exception-messages (dbconfig {} :fatal-exceptions)]
+    (reduce (fn [fatal msg-substring] (if (.contains msg msg-substring) (reduced true))) false fatal-exception-messages)))
 
 
 (s/defn any-fatal-exceptions? :- s/Bool
@@ -232,79 +246,13 @@
     (apply template/partial-subst<- source-sql default-substitutions)))
 
 
-(s/defn execute-prepared-statement :- s/Any
-  "Internal API.  A partially-applied version of this function is returned by the prepare function
-  for clients to call in order to execute a prepared statement.
-
-  The only parameter that isn't set in the partially-applied version of this function is the kvs
-  varargs parameter.  This is to be used in a similar manner to prepare's kvs parameter:
-
-  * Specify values for bind variables.
-  * Specify or override database library settings.  The only setting you cannot override here is the
-    database connection.
-  * Specify settings to be passed to the sql function
-
-  Similar to prepare, keywords are interpreted as follows:
-
-  :: Keywords that are defined in clj-foundation.db are considered :settings.  These are referenced
-     via the vars that are defined inside db.clj.
-  :: Keywords that are namepaced to any other namespace are considered :dblib-params.  Legal values are
-     any keyword/value pairs supported by your sql-fn.  These will be passed to SQL-FN inside a single
-     map as the last argument after any bind variable values.
-  :  Keywords that have no namespace qualification are considered :template-vars.  Template variable
-     values are used to populate the bind variable arguments to SQL-FN.
-
-  The following :settings parameter must be defined either in prepare or when calling
-  execute-prepared-statement:
-
-  * SQL-FN
-
-  Recommended but not required:
-
-  * JOB-NAME   (defaults to the first line of SQL if not specified)
-  * ABORT?-FN  (defaults to clj-foundation.db/any-fatal-exceptions?)
-
-  Refer to the docstrings for the above defs for more information on each setting.
-
-  Returns the results of calling:
-    (sql-fn connection [prepared-statement] bind-arg1 bind-arg2 ... bind-argn {dblib-params})"
-
-  [connection            :- {s/Any s/Any}
-   prepared-statement    :- PreparedStatement
-   sql                   :- s/Str
-   sql-argument-names    :- [s/Keyword]
-   prepare-settings      :- {s/Keyword s/Any}
-   prepare-template-vars :- {s/Keyword s/Any}
-   & kvs                 :- [s/Keyword s/Any]]
-
-  (errors/must-be "Expecting an even number of kv parameters" (even? (count kvs)))
-  (let [{:keys
-         [template-vars
-          settings
-          dblib-params]} (varmaps<- kvs)
-
-        bind-variables   (merge prepare-template-vars template-vars)
-        exec-settings    (merge prepare-settings settings)
-        config           (partial dbconfig exec-settings) ; (for DRYness)
-
-        job-name         (err/value-or (config :job-name)  (fn [_] (first (template/lines sql))))
-        sql-fn           (config :sql-fn)
-        abort?-fn        (err/value-or (config :abort?-fn) (fn [_] any-fatal-exceptions?))
-        bind-values      (vec (map #(template/resolve-var bind-variables %) sql-argument-names))]
-
-    (err/must-be "SQL-FN must be defined to execute a PreparedStatement." (something? sql-fn))
-    (log-censored-sql sql)
-
-    (apply err/retry-with-timeout
-           job-name
-           (config :max-retries)
-           (+ (config :jdbc-timeout-millis) (millis/<-seconds 5)) ; Give JDBC some time before we timeout
-           (config :retry-pause-millis)
-           abort?-fn
-           sql-fn connection [prepared-statement] (conj bind-values dblib-params))))
+(def DbSpec
+  "A clojure.java.jdbc database spec map is a :keyword / value map."
+  {s/Keyword s/Any})
 
 
-(defn prepare
+
+(s/defn prepare :- s/Any
   "Create a SQL PreparedStatement using the specified parameters.  Parameters may be template
   variables to be substituted into the SQL string before preparing the statement, clj-foundation.db
   settings variables such as timeout values or the connection to use, or JDBC parameters to be passed
@@ -332,8 +280,16 @@
   * JOB-NAME   (defaults to the first line of SQL if not specified)
   * ABORT?-FN  (defaults to clj-foundation.db/any-fatal-exceptions?)
 
-  Returns a function that can accept additional kv parameters and execute the PreparedStatement."
-  [sql-template & kvs]
+  Refer to the docstrings for the above defs for more information on each setting.
+
+  Returns a function that can accept additional kv parameters and execute the PreparedStatement.
+
+  That function returns the results of calling:
+  (sql-fn connection [prepared-statement] bind-arg1 bind-arg2 ... bind-argn {dblib-params})"
+
+  [sql-template :- s/Str
+   & kvs        :- [s/Keyword s/Any]]
+
   (errors/must-be "Expecting an even number of kv parameters" (even? (count kvs)))
 
   (let [{:keys
@@ -341,26 +297,56 @@
           settings
           dblib-params]}     (varmaps<- kvs)
 
-        connection           (dbconfig settings :connection)
+        config               (partial dbconfig settings)
+
+        connection           (config CONNECTION)
+        _                    (err/must-be "CONNECTION must be defined." (something? connection))
 
         [sql
-         sql-argument-names] (template/sql-vars (apply resolve-sql sql-template template-vars))
+         sql-argument-names] (template/sql-vars (apply resolve-sql sql-template (template/kv-vector<- template-vars)))
 
-        prepared-statement   (apply db/prepare-statement
-                                    connection
-                                    sql
-                                    :timeout (dbconfig settings JDBC-TIMEOUT-MILLIS)
-                                    (flatten (vec dblib-params)))]
+        prepared-statement   (db/prepare-statement
+                              (:connection connection)
+                              sql
+                              (merge {:timeout (config JDBC-TIMEOUT-MILLIS)} dblib-params))]
 
-    ;; Return a partially-applied function derived from execute-prepared-statement
-    (partial execute-prepared-statement
-             connection
-             prepared-statement
-             sql
-             sql-argument-names
-             settings
-             template-vars)))
+    (let [prepare-settings     settings
+          prepare-dblib-params dblib-params]
 
+      (fn [& kvs]
+        (errors/must-be "Expecting an even number of kv parameters" (even? (count kvs)))
+
+        (let [{:keys
+               [template-vars
+                settings
+                dblib-params]} (varmaps<- (vec kvs))
+
+              exec-params      (merge prepare-dblib-params dblib-params)
+              exec-settings    (merge prepare-settings settings)
+              config           (partial dbconfig exec-settings) ; (for DRYness)
+
+              job-name         (let [jname (config :job-name)]
+                                 (if (fn? jname) (jname sql) jname))
+              sql-fn           (config :sql-fn)
+              bind-values      (vec (map #(template/resolve-var template-vars %) sql-argument-names))
+              sql+parameters   (apply conj [prepared-statement] bind-values)
+              dblib-vector     (if (empty? exec-params)
+                                 []
+                                 [exec-params])
+
+              retry-settings   (errors/->RetrySettings
+                                (config :max-retries)
+                                (+ (config :jdbc-timeout-millis) (millis/<-seconds 5)) ; Give JDBC some time before we timeout
+                                (config :retry-pause-millis)
+                                (config :abort?-fn))]
+
+          (err/must-be "SQL-FN must be defined to execute a PreparedStatement." (something? sql-fn))
+
+          (log-censored-sql sql)
+          (apply err/retry-with-timeout
+                 job-name
+                 retry-settings
+                 sql-fn connection sql+parameters dblib-vector))))))
 
 
 (defmacro defquery
@@ -374,13 +360,17 @@
 
   The resulting function may be called multiple times, specifying
   additional or different variable substitutions each time if necessary."
-  [function-name sql-or-resource & default-subs]
-  (let [job-name# (name function-name)]
-    `(def ~function-name (prepare sql-or-resource JOB-NAME ~job-name# SQL-FN clj-foundation.db/query ~@default-subs))))
+  [function-name sql-or-resource & constant-kvs]
+  (let [job-name (name function-name)]
+    `(def ~function-name
+       (fn [& runtime-kvs#]
+         (let [kvs# (apply conj [~@constant-kvs] runtime-kvs#)
+               q# (apply prepare ~sql-or-resource JOB-NAME ~job-name SQL-FN clojure.java.jdbc/query kvs#)]
+           (q#))))))
 
 
 (defmacro defstatement
-  "Define a function to execute on CONNECTION the SQL resulting from
+  "Define a function to query CONNECTION using the SQL resulting from
   loading the specified resource file and substituting the subsequent
   key-value pairs for the variables defined in the resource file.
 
@@ -390,32 +380,30 @@
 
   The resulting function may be called multiple times, specifying
   additional or different variable substitutions each time if necessary."
-  [function-name sql-or-resource & default-subs]
-  (let [job-name# (name function-name)]
-    `(def ~function-name (prepare sql-or-resource JOB-NAME ~job-name# SQL-FN clj-foundation.db/execute! ~@default-subs))))
+  [function-name sql-or-resource & constant-kvs]
+  (let [job-name (name function-name)]
+    `(def ~function-name
+       (fn [& runtime-kvs#]
+         (let [kvs# (apply conj [~@constant-kvs] runtime-kvs#)
+               q# (apply prepare ~sql-or-resource JOB-NAME ~job-name SQL-FN clojure.java.jdbc/execute! kvs#)]
+           (q#))))))
 
 
 (defn execute!
   "Execute on CONNECTION the specified SQL or the SQL in the specified
   resource file, substituting the subsequent key-value pairs for the
-  variables defined in the resource file.  Note that two variables are
-  predefined: :public is predefined to point to the public schema
-  specified in the config and :staging is predefined to point to the
-  staging schema."
+  variables defined in the resource file."
   [sql-or-resource & variable-key-vals]
-  (let [sql-fn (apply prepare sql-or-resource SQL-FN execute! variable-key-vals)]
+  (let [sql-fn (apply prepare sql-or-resource SQL-FN clojure.java.jdbc/execute! variable-key-vals)]
     (sql-fn)))
 
 
 (defn query
   "Query CONNECTION using the specified SQL or the SQL in the specified
   resource file, substituting the subsequent key-value pairs for the
-  variables defined in the resource file.  Note that two variables are
-  predefined: :public is predefined to point to the public schema
-  specified in the config and :staging is predefined to point to the
-  staging schema."
+  variables defined in the resource file."
   [sql-or-resource & variable-key-vals]
-  (let [sql-fn (apply prepare sql-or-resource SQL-FN query variable-key-vals)]
+  (let [sql-fn (apply prepare sql-or-resource SQL-FN clojure.java.jdbc/query variable-key-vals)]
     (sql-fn)))
 
 
