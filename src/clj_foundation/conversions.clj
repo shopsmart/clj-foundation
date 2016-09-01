@@ -11,6 +11,10 @@
   "Alias for clojure.lang.PersistentVector"
   clojure.lang.PersistentVector)
 
+(def Seq
+  "Alias for clojure.lang.ISeq"
+  clojure.lang.ISeq)
+
 
 (defmulti convert
   "Convert src-instance to dest-class if possible.  Returns patterns/NO-RESULT-ERROR
@@ -30,7 +34,7 @@
 
 
 (defmethod convert [Map Vector] [_ v]
-  (must-be "Vector must contain key-value pairs" (even? (count v)))
+  (must-be "Vector/Seq must contain key-value pairs" (even? (count v)))
   (apply assoc {} v))
 
 
@@ -43,6 +47,12 @@
 
 (defmethod convert [clojure.lang.PersistentTreeMap Vector] [_ v]
   (convert Map v))
+
+(defmethod convert [Map Seq] [_ s]
+  (convert Map (vec s)))
+
+(defmethod convert [Map clojure.lang.ASeq] [_ s]
+  (convert Map (vec s)))
 
 
 (defmethod convert :default [_ _] patterns/NO-RESULT-ERROR)
