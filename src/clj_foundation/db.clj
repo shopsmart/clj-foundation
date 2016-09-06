@@ -285,7 +285,7 @@
   Returns a function that can accept additional kv parameters and execute the PreparedStatement.
 
   That function returns the results of calling:
-  (sql-fn connection [prepared-statement] bind-arg1 bind-arg2 ... bind-argn {dblib-params})"
+  (sql-fn connection [prepared-statement bind-arg1 bind-arg2 ... bind-argn] {dblib-params})"
 
   [sql-template :- s/Str
    & kvs        :- [s/Keyword s/Any]]
