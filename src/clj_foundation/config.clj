@@ -52,7 +52,9 @@
 
   [config-fn-name config-file-location-envar default-config-resource & default-kvs]
 
-  `(let [read-settings# #(read-settings-file ~config-file-location-envar
-                                             ~default-config-resource
-                                             ~default-kvs)]
-     (def ~config-fn-name (partial read-config (read-settings#)))))
+  `(def ~config-fn-name
+     (fn [& keys#]
+       (let [read-settings# #(read-settings-file ~config-file-location-envar
+                                                 ~default-config-resource
+                                                 ~default-kvs)]
+         (apply read-config (read-settings#) keys#)))))

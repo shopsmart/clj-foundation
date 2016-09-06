@@ -1,5 +1,6 @@
 (ns clj-foundation.patterns
   (:require [schema.core :as s :refer [=> =>*]]
+            [clojure.string :as str]
             [potemkin :refer [def-map-type]])
   (:gen-class))
 
@@ -18,7 +19,7 @@
 (def KeywordValuePairs
   "A schema for keyword-value pairs.  Currently unsupported by Schema so defining once here so that once support lands,
   there is only one place to change to enforce it everywhere."
-  [])
+  [s/Keyword s/Any])
 
 
 (s/defn get-package :- s/Str
@@ -59,40 +60,61 @@
   `(def ~name (memoize (fn [] ~@body))))
 
 
-;; The Nothing object ---------------------------------------------------------------------------------------
+;; The Nothing object / collection utilities ----------------------------------------------------------------
+
+(defn any?
+  "Returns truthy if any element in coll satisfies predicate."
+  [predicate coll]
+  (not-empty (filter predicate coll)))
 
 
-(def-map-type Nothing [string-value]
+(definterface IWhy
+  (why []))
+
+(def-map-type Nothing [string-value reason]
+  IWhy
   (get [_ k default-value]
        default-value)
   (assoc [_ k v] (assoc {} k v))
   (dissoc [_ k] {})
   (keys [_] nil)
-  (meta [_] nil)
+  (meta [_] {})
   (with-meta [this mta] this)
-  (toString [this] string-value))
+  (toString [this] string-value)
+  (why [_] reason))
 
 
 (def nothing
-  "Nothing is the value to use when there is nothing to pass or return.  Note that Nothing
-  acts like an empty map.  This has the following implications:
+  "Nothing is the value to use when there is nothing to pass or return.  Nothing acts like an
+  empty map in a collection context and like an empty string in a string context.
+
+  This has the following implications:
 
   * You can use it as a result in mapcat when you want nothing appended to the output collection.
   * You can cons a value into nothing, resulting in a seq.
   * You can assoc values into a nothing, resulting in a map.
   * You can conj vector pairs into a nothing, resulting in a map.
-  * etc..."
-  (Nothing. "Nothing {}"))
+  * You can concatinate it with other strings using the str function, adding nothing to the other strings."
+  (Nothing. "" {}))
 
 
 (def NO-RESULT-ERROR
-  "An instance of Nothing intended for use as an error result.  It is a separate instance
+  "An instance of Nothing intended for use as a generic error result.  It is a separate instance
   from 'nothing' because returning 'nothing' might not be an error.  This value is useful for functions
   used within map / mapcat / filter (etc...) chains where it is useful to have an error value that
   behaves like the identity value for a collection.
 
+  However, unlike the nothing value, in a string context, NO-RESULT-ERROR returns an error message.
+
   NO-RESULT-ERROR is treated as a failure by the failure? multimethod in the errors package."
-  (Nothing. "No result error {}"))
+  (Nothing. "No result error {}" {}))
+
+
+(s/defn no-result :- Nothing
+  "Create custom Nothingness with a specified (.toString n) and (.why n) value."
+  [string-value :- s/Str
+   reason       :- s/Any]
+  (Nothing. string-value reason))
 
 
 (def use-defaults
@@ -108,7 +130,7 @@
 
 
 (s/defn something? :- s/Any
-  "Returns value if value is not nothing; else returns nil."
+  "Returns value if value is not nothing ; else returns nil."
   [value :- s/Any]
   (if (instance? Nothing value)
     nil
@@ -116,7 +138,7 @@
 
 
 (s/defn nothing->identity :- s/Any
-  "Takes nil or nothing to the specified identity value for the type and computation in context,
+  "Takes nil or Nothing to the specified identity value for the type and computation in context,
   otherwise returns value.  An identity value can be applied to a value of the given type under the
   operation in context without affecting the result.  For example 0 is the identity value for rational
   numbers under addition.  The empty string is the identity value for strings under concatination.
@@ -170,3 +192,31 @@
              (conj mapfns# result#)
              [mapfns# result#])
            mapfns#)))))
+
+
+;; FP Utilities --------------------------------------------------------------------------------------------
+
+
+(defmacro f
+  "A \"where\" form for anonymous functions.  e.g.:
+
+  * If the body of the function is a single function call, the parens may be omitted.
+    (f x y => + x y)
+    (f x y & more => apply + x y more)
+
+  * If more statements are needed, they are wrapped in an implicit (do ...)
+    (f => (log/warning \"She's about to blow!\")
+          (self-destruct))"
+  [& all]
+  (let [args# (vec (take-while #(or (vector? %1)
+                                    (map? %1)
+                                    (not (= (name %1) "=>")))
+                               all))
+        argCount (count args#)
+        expr (last (split-at (+ argCount 1) all))]
+    (cond
+      (seq? (first expr))    `(fn ~args# (do ~@expr))
+      (vector? (first expr)) `(fn ~args# ~@expr)
+      (set? (first expr))    `(fn ~args# ~@expr)
+      (map? (first expr))    `(fn ~args# ~@expr)
+      :else                  `(fn ~args# (~@expr)))))
