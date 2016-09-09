@@ -142,7 +142,7 @@
 
 (s/defn read-file :- s/Str
   "Read and return a text file as a String.  Supported sources are the same as io/input-stream, with
-  the following additions: ResourceOverrideMap and ResourceOverrideMap.  See: (doc schema-name)
+  the following additions: ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name)
   for more information on these types."
   [file-input :- ExtendedFileInputs]
   (with-open [input (-> (normalize-file-input file-input) io/input-stream)]
