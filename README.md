@@ -93,7 +93,7 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
 * Math extensions supporting mixed numbers.
 * Time conversions to/from milliseconds; convert milliseconds into a single days, hours, minutes, seconds value.
 * Simple named implementations of design patterns familiar to Java developers, particularaly Singleton.
-* An implementation of None from the Option pattern (named Nothing).
+* An implementation of None from the Option pattern (named Nothing) that behaves like the identity value in many contexts.
 
 ### Leiningen coordinates
 
@@ -121,10 +121,20 @@ where "version" currently is "[![Release](http://jitpack.io/v/com.github.shopsma
 * ArtifactId: clj-foundation
 * Version: [![Release](http://jitpack.io/v/com.github.shopsmart/clj-foundation.svg)](https://jitpack.io/#shopsmart/clj-foundation)
 
+### Manual build/test
+
+```bash
+# Build
+$ lein jar
+
+# Test
+$ lein with-profile test test
+```
 
 ## License
 
-Copyright © 2015 by ShopSmart, LLC.  Licensed under the Eclipse Public License v1.0.
+Copyright © 2015, 2016 by ShopSmart, LLC.  Licensed under the Eclipse Public License v1.0.
+
 
 ## Authors
 
