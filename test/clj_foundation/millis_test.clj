@@ -1,8 +1,11 @@
 (ns clj-foundation.millis-test
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.unit-test-common :as common]
             [clj-foundation.millis :refer :all]))
 
+
+(common/register-fixtures)
 
 (def unit-conversions
   "Conversions from a larger unit to millis, then back to the larger unit."

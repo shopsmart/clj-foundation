@@ -140,12 +140,22 @@
                 e))))))
 
 
+
+(s/defn input-stream :- InputStream
+  "Read and return a text file as an InputStream.  Supported sources are the same as io/input-stream, with
+  the following additions: ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name)
+  for more information on these schema types."
+  [file-input :- ExtendedFileInputs]
+  (-> (normalize-file-input file-input)
+      io/input-stream))
+
+
 (s/defn read-file :- s/Str
   "Read and return a text file as a String.  Supported sources are the same as io/input-stream, with
   the following additions: ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name)
   for more information on these types."
   [file-input :- ExtendedFileInputs]
-  (with-open [input (-> (normalize-file-input file-input) io/input-stream)]
+  (with-open [input (input-stream file-input)]
     (slurp input)))
 
 

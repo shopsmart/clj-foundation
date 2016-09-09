@@ -130,7 +130,7 @@
 
   If :partial-resolve true is specified in options, resolves as many
   variables as possible.  Unresolved variables are returned as ${var-name}."
-  [parameter-source :- (types String clojure.lang.ISeq)
+  [parameter-source :- (types String clojure.lang.ASeq)
    substitution-map :- {s/Any s/Any}
    & options        :- [s/Any]]
   (let [re-match->value (apply re-seq-key->value substitution-map options)]
