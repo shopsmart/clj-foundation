@@ -24,8 +24,7 @@
             [clj-foundation.errors :as errors :refer [try* failure?]]
             [clj-foundation.conversions :as c :refer [convert]]
             [clj-foundation.patterns :as p :refer [f types something? nothing Nothing! any? KeywordValuePairs]])
-  (:import [java.sql PreparedStatement]
-           [clj_foundation.patterns FnMap])
+  (:import [java.sql PreparedStatement])
   (:gen-class))
 
 
@@ -116,6 +115,9 @@
   [k]
   (keyword (.toLowerCase (name k))))
 
+
+;; This is a forward reference; not moved because I want to keep config concerns together.
+(declare any-fatal-exceptions?)
 
 (def ^:private dbconfig-overrides
   "API for overridding values in the dbconfig-defaults map.  By default nothing is overridden.

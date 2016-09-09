@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.unit-test-common :as common]
             [clj-foundation.io :refer :all])
 
   (:import [java.io File FileNotFoundException]
@@ -10,7 +11,7 @@
            [clojure.lang ExceptionInfo]))
 
 
-(s/set-compile-fn-validation! true)
+(common/register-fixtures)
 
 
 (deftest normalize-file-input-test

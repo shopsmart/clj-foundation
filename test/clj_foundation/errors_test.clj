@@ -1,11 +1,13 @@
 (ns clj-foundation.errors-test
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.unit-test-common :as common]
             [clj-foundation.errors :refer :all]
             [clj-foundation.patterns :as p :refer [any?]]
             [clj-foundation.millis :as millis]))
 
 
+(common/register-fixtures)
 
 (deftest failure?--predefined-failure-modes-test
   (testing "Nil is not a failure"

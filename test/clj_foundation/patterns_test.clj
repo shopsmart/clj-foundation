@@ -1,10 +1,11 @@
 (ns clj-foundation.patterns-test
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.unit-test-common :as common]
             [clj-foundation.patterns :refer :all]))
 
 
-(s/set-fn-validation! true)
+(common/register-fixtures)
 
 
 ;; Schema/type tests ---------------------------------------------------------------------------------------

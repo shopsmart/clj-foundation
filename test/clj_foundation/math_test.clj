@@ -1,8 +1,10 @@
 (ns clj-foundation.math-test
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
+            [clj-foundation.unit-test-common :as common]
             [clj-foundation.math :refer :all]))
 
+(common/register-fixtures)
 
 (deftest mixednumber-parts-test
   (testing "Decimals can be turned into MixedNumbers and then into strings."

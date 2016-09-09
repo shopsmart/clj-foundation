@@ -1,4 +1,4 @@
-(defproject com.github.shopsmart/clj-foundation "0.9.8"
+(defproject com.github.shopsmart/clj-foundation "0.9.10"
   :description "Common patterns enabling simpler to be easier and harder to be possibler."
   :url "https://github.com/shopsmart/clj-foundation"
 
@@ -6,6 +6,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :plugins [[lein-test-bang-bang "0.2.0"]]
+
+  :profiles {:test {:dependencies [[com.h2database/h2 "1.4.192"]]}
+             :repl {:dependencies [[com.h2database/h2 "1.4.192"]]}}
 
   :aot :all
 
@@ -16,5 +19,4 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [prismatic/schema "1.1.1"]
                  [potemkin "0.4.3"]
-                 [org.clojure/java.jdbc "0.6.2-alpha2"]
-                 [com.h2database/h2 "1.4.192"]])
+                 [org.clojure/java.jdbc "0.6.2-alpha2"]])
