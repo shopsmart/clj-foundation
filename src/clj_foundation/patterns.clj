@@ -155,6 +155,34 @@
     identity-value))
 
 
+(s/defn empty->nil :- s/Any
+  "Synopsis:
+     (empty->nil [])                --> nil
+     (empty->nil \" \")             --> nil
+     (empty->nil 1 :zero-p #(= 1 %) --> nil   ; Under multiplication
+
+  If value is empty (for its type's natural definition of empty), returns nil.  Otherwise returns
+  value.
+
+  * Collections are empty iff (empty? coll)
+  * Strings are considered empty if they are the empty string or trim to the empty string.
+  * Numbers only have a natural definition of empty (identity) under specific operations: e.g.: 0/+, 1/*.
+    To convert numbers to nil, one must specify a predicate function to detect if the specified value
+    is an identity value under the operation in context."
+  ([value :- s/Any
+    & [{:keys [zero-p] :or {:zero-p empty?}}]]
+
+   (if (and (number? value)
+            (not= empty? zero-p))
+     (throw (IllegalArgumentException.
+             "If value is numeric, clients must assign zero-p option to test for the identity value under the current operation.")))
+
+   (cond
+     (string? value) (if (zero-p (str/trim value)) nil value)
+     :else           (if (zero-p value) nil value))))
+
+
+
 ;; Retain intermediate steps in a map -----------------------------------------------------------------------
 
 (defmacro let-map
