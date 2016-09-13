@@ -62,11 +62,6 @@
 
 ;; The Nothing object / collection utilities ----------------------------------------------------------------
 
-(defn any?
-  "Returns truthy if any element in coll satisfies predicate."
-  [predicate coll]
-  (not-empty (filter predicate coll)))
-
 
 (definterface IWhy
   (why []))
@@ -135,6 +130,12 @@
   (if (instance? Nothing value)
     nil
     value))
+
+
+(defn any?
+  "Returns truthy if any element in coll satisfies predicate."
+  [predicate coll]
+  (not-empty (filter predicate coll)))
 
 
 (s/defn nothing->identity :- s/Any
