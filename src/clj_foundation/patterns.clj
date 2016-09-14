@@ -132,52 +132,6 @@
     value))
 
 
-(defn any?
-  "Returns truthy if any element in coll satisfies predicate."
-  [predicate coll]
-  (not-empty (filter predicate coll)))
-
-
-(s/defn nothing->identity :- s/Any
-  "Takes nil or Nothing to the specified identity value for the type and computation in context,
-  otherwise returns value.  An identity value can be applied to a value of the given type under the
-  operation in context without affecting the result.  For example 0 is the identity value for rational
-  numbers under addition.  The empty string is the identity value for strings under concatination.
-
-  Note that Nothing is already an identity value for maps and seqs.  This function is only useful
-  for types where the Nothing type is ill-behaved (e.g.: Strings, Numbers, ...) for a given operation.
-
-  Another name for this concept is the monadic zero for the type/operation."
-  [identity-value :- s/Any, value :- s/Any]
-
-  (if (something? value)
-    value
-    identity-value))
-
-
-(s/defn empty->nil :- s/Any
-  "Synopsis:
-     (empty->nil [])                                  --> nil
-     (empty->nil \"\")                                --> nil
-     (empty->nil 1 #{1})                              --> nil   ; e.g.: Under multiplication
-     (empty->nil \"none\" #{\"nil\" \"none\" \" \"})  --> nil
-
-  If value is empty (for its type's natural definition of empty), returns nil.  Otherwise returns
-  value.
-
-  * Non-numeric values are empty iff (empty? value).
-  * Numbers default to zero as their identity value.
-  * The identity predicate may optionally be overridden in the second parameter."
-  ([value      :- s/Any
-    identity-p :- (=> s/Bool [s/Any])]
-   (if (identity-p value) nil value))
-
-  ([value      :- s/Any]
-   (cond
-     (number? value) (empty->nil value zero?)
-     :else           (empty->nil value empty?))))
-
-
 
 ;; Retain intermediate steps in a map -----------------------------------------------------------------------
 

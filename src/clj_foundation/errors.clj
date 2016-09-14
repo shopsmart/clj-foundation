@@ -9,6 +9,15 @@
   (:gen-class))
 
 
+;; Traceability ---------------------------------------------------------------------
+
+(defmacro trace
+  "Like str but prepends the namespace and line/column of the call site."
+  [& more]
+  (let [line-col (vec (meta &form))
+        s        (apply str *ns* line-col " " more)]
+    `s))
+
 
 ;; Extensible failure objects / test multimethod -------------------------------------
 
@@ -257,33 +266,6 @@
 ;; (dis)allowed values ------------------------------------------------------------------
 
 
-(s/defn replace-if :- s/Any
-  "In the binary form, replace value with the result of running predicate against value
-   if that result is truthy.  In the terniary form, replace value with replacement if
-   the result of running predicate against value is truthy.
-
-   An idiomatic way to use this function is to pass a set of disallowed values as
-   predicate, and a replacement value as replacement."
-
-  ([value :- s/Any, predicate :- (=> s/Any [s/Any])]
-   (let [maybe-result (predicate value)]
-     (if maybe-result
-       maybe-result
-       value)))
-
-  ([value :- s/Any, predicate :- (=> s/Any [s/Any]), replacement :- s/Any]
-   (if (predicate value)
-     value
-     replacement)))
-
-
-(s/defn replace-nil :- s/Any
-  "Accepts a value that cannot be nil; if it is not nil it returns it, else it
-  returns its replacement."
-  [maybe-nil :- s/Any, replacement :- s/Any]
-  (replace-if maybe-nil #{nil} replacement))
-
-
 (s/defn not-nil :- s/Any
   "If value is not nil, returns it, else throws IllegalArgumentExceoption with
   the message \"${name} cannot be nil\""
@@ -292,6 +274,8 @@
     (throw (java.lang.IllegalArgumentException. (str name " cannot be nil")))
     value))
 
+
+;; FIXME: The following two do roughly the same thing.  Consolidate.
 
 (s/defn not-failure :- s/Any
   "If value is not a failure, returns it, else throws IllegalArgumentExceoption with
@@ -302,23 +286,6 @@
       (throw (java.lang.IllegalStateException. message value))
       (throw (java.lang.IllegalStateException. (str "[" value "]: " message))))
     value))
-
-
-(s/defn value-or :- s/Any
-  "If value is nil or an instance of Nothing, run f and return its result.  Else, return value."
-  [value :- s/Any, f :- (=> s/Any [s/Any])]
-  (if (or (nil? value)
-          (instance? (Nothing!) value))
-    (f value)
-    value))
-
-
-(s/defn something-or :- s/Any
-  "If value is not Nothing return value, else run f and return its result."
-  [value :- s/Any, f :- (=> s/Any [s/Any])]
-  (if (something? value)
-    value
-    (f value)))
 
 
 (s/defn throw-or :- s/Any
@@ -334,7 +301,9 @@
 (defmacro must-be
   "If body is truthy returns result of evaluating body, else throws IllegalArgumentException with message."
   [message & body]
-  `(let [result# (do ~@body)]
-     (if result#
+  (let [line-col (vec (meta &form))
+        ns       *ns*]
+    `(let [result# (do ~@body)]
+       (if result#
          result#
-         (throw (IllegalArgumentException. ~message)))))
+         (throw (IllegalArgumentException. (str ~ns ~line-col " " ~message)))))))
