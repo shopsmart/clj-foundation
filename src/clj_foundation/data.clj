@@ -1,4 +1,4 @@
-(ns clj-foundation.filters
+(ns clj-foundation.data
   (:require [clj-foundation.patterns :as p]
             [clj-foundation.errors :as err]
             [schema.core :as s :refer [=> =>*]]
@@ -99,3 +99,104 @@
   (if (p/something? value)
     value
     (f value)))
+
+
+
+(s/defn undasherize :- s/Str
+  "Replace all instances of '-' or '_' with replacement"
+  [replacement :- s/Str,  value :- (types s/Str Named)]
+  (str/replace (name value) #"[\-_]" replacement))
+
+
+(s/defn ->SNAKE_CASE :- s/Str
+  "Convert any Named or String object to SNAKE_CASE.  Does not handle camelCase."
+  [value :- (types s/Str Named)]
+  (str/upper-case (undasherize "_" (name value))))
+
+
+(s/defn ->uppercase-with-spaces :- s/Str
+  "Convert - or _ to ' ' and captialize string."
+  [value :- (types s/Str Named)]
+  (str/upper-case (undasherize " " (name value))))
+
+
+(defn dasherize
+  "Replace all instance of match with '-' in value."
+  [match value]
+  (str/replace (str value) match "-"))
+
+
+(defn- keywordize
+  "Return dasherized keyword."
+  [string]
+  (keyword (str/lower-case
+             (dasherize #"[\s/_]" string))))
+
+(defn- string->keyword
+  "Convert string name to a keyword
+   Ex. some_name -> :some-name"
+  ([name naming-exceptions]
+    (if-let [name-exception (naming-exceptions name)]
+      name-exception
+      (keywordize name)))
+  ([name]
+    (keywordize name)))
+
+(defn string-list->keywords
+  "Convert a list of strings to a list of keywords"
+  ([list]
+    (map (fn [string]
+         (string->keyword (name string))) list))
+  ([list naming-exceptions]
+    (map (fn [string]
+         (string->keyword (name string) naming-exceptions)) list)))
+
+
+(defn constant-seq
+  "Return an infinite lazy seq of cs"
+  [c]
+  (lazy-seq (cons c (constant-seq c))))
+
+
+(defn zipmap-data [keywords data]
+  (map #(zipmap keywords %) data))
+
+
+(s/defn set-map-entries :- {s/Any s/Any}
+  "Returns a new copy of m where for all [k v] => if k is in entries, v is set to new-value."
+  [m         :- {s/Keyword s/Any}
+   entries   :- [s/Keyword]
+   new-value :- s/Any]
+  (let [new-entries (zipmap entries (constant-seq new-value))]
+    (merge m new-entries)))
+
+
+(defn remove-header-row [data]
+  (rest data))
+
+
+(defn parse-xml [xml]
+  (xml/parse (StringReader. xml)))
+
+
+(defn xml-element->kv-pair
+  "Return key-value pair where key is the tag name,
+   and value is content of the xml element."
+  [element]
+  [(:tag element)
+   (first (:content element))])
+
+
+(defn xml-elements->map
+  "Return a map of key-value pairs from the given xml elements."
+  [elements]
+  (into {} (map xml-element->kv-pair (:content elements))))
+
+
+(defn extract-root-xml-element
+  "Extract root xml element from the given XML document."
+  [root-element xml]
+  (let [initial-tag (:tag xml)]
+    (if (= root-element initial-tag)
+      (:content (first (:content xml)))
+      (throw (java.lang.IllegalStateException. (str "Invalid initial XML tag: " initial-tag))))))
