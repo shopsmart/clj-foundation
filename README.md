@@ -6,6 +6,10 @@
     * To maintain API compatiblity with prior releases to the greatest extent possible
     * To remove duplicated functionality (which may contradict the API compatibility principle)
     * To maintain API compatibility with code copied from internal Brad's Deals projects to the greatest extent possible.
+    * Clear naming convention for namespaces that are provisional (non-frozen, WIP) API.
+
+* Known tech debt that may influence APIs
+    * Consider migrating db.clj's local configuration mechanism to config.clj (and then make an instance of the generic implementation inside db.clj)
 
 * Target Clojure 1.9
     * All functions will have type information supplied via Clojure 1.9 specs.
@@ -15,6 +19,29 @@
     * All functions will be unit tested using a style designed to illustrate behavior under failure modes as well as happy path scenarios.
     * We will collectively agree on a style of testing that seems to hit the sweet spot between overspecification and underspecification.
         * (Details are not set in stone but definitely up for negotiation)
+    * When defects are detected, we will first reproduce the defect's root cause using a failing test case that will prevent the defect from reoccurring without the test notifying us.
+    * Generative testing with Specs
+    * Integrate kbitz (suggest Clojure idioms), some Clojure linting library; if it's easy to make these available to clients of clj-foundation, do so.
+
+* Debug library
+    * dbg, ppdbg macros
+    * trace?
+
+* Documentation
+    * Machine generate as much as possible?
+
+* Make clj_infrastructure as a separate library
+    * Move db.clj there?
+    * Abstract db.clj API using monads at the foundation layer and implement for relational, nosql, etc. in infrastructure?
+        * http://rea.tech/the-worst-thing-in-our-scala-code-futures/  ?
+        * Abstractions for creating/consuming lazy sequences?
+        * Abstractions for aggregating a sequence of database results into a map[concatinated-key value(s)]
+
+## Provisional ideas for 1.0
+
+* Figure out how to isolate namespaces and their dependencies at the classpath level, including runtime reloading and evolution semantics after the fashion of OSGi at the REPL or in a running application.
+* Update and include clojure.osgi for clean deployment into OSGi frameworks?
+* Deploy to Clojars?
 
 
 # Why clj-foundation?
@@ -27,11 +54,11 @@ clj-foundation supplies namespaces making additional simple things easy and hard
 * The only dependencies are Clojure, Potemkin, and Schema in order to minimize adoption friction.
     * *(This is up for renegotiation for 1.0)*
 
-## Features
+# Features
 
 The folowing is a small sample of clj-foundation's features:
 
-### Math
+## Math
 
 * A Mixed Number type
 * Time conversions to/from milliseconds
@@ -40,7 +67,7 @@ The folowing is a small sample of clj-foundation's features:
 * Functions converting identity values of various types/operations to and from nil.
 
 
-### Ever had to declare a map containing the result of let variable bindings?  Now you can do that in one step with let-map.
+## Ever had to declare a map containing the result of let variable bindings?  Now you can do that in one step with let-map.
 
 ```clojure
 (let-map [meaning 42
@@ -50,7 +77,7 @@ The folowing is a small sample of clj-foundation's features:
  :secrets "nobody:*:-2:-2:Unprivileged User:/var/empty:/usr/bin/false\nroot:*:0:0:System Administrator:/var/root:/bin/sh\n...."}
 ```
 
-### Data/error processing enhancements and timeout handling.
+## Data/error processing enhancements and timeout handling.
 
 ```clojure
 ;; Replace a nil value with a default
@@ -70,7 +97,7 @@ The folowing is a small sample of clj-foundation's features:
 (retry 5 (millis/<-seconds 10) some-unreliable-io-operation)
 ```
 
-### A string interpolation language that is intentionally dumb about the syntax of its hosting language.
+## A string interpolation language that is intentionally dumb about the syntax of its hosting language.
 
 ```clojure
 ;; Given:
@@ -95,7 +122,7 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
     * Operating system environment variables
     * Any key/value variables specified in code.
 
-### Extensions to Clojure's file input functions
+## Extensions to Clojure's file input functions
 
 ```clojure
 ;; Return a Jar resource as a string
@@ -116,14 +143,15 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
 (read-template "ALT_CONFIG_LOCATION" "config.properties" :NAME "Jack")
 ```
 
-### And more...
+## And more...
 
 * Easier serialization / deserialization in various formats.  Currently supports binary and EDN formats.  Optionally can use the template language to support substitution variables inside EDN files.
 * A let-map form similar to "let" that returns its names and values as a Map--for those times the values of subsequent keys in a Map depend on the values of prior ones.
 * Simple named implementations of design patterns familiar to Java developers, particularaly Singleton.
 
+# Deployment/usage
 
-### Leiningen coordinates
+## Leiningen coordinates
 
 ```clojure
 :user {:repositories [["jitpack" "https://jitpack.io"]]
@@ -133,7 +161,7 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
 
 where "version" currently is "[![Release](http://jitpack.io/v/com.github.shopsmart/clj-foundation.svg)](https://jitpack.io/#shopsmart/clj-foundation)".
 
-### Maven coordinates
+## Maven coordinates
 
 ```xml
 <repositories>
@@ -149,7 +177,7 @@ where "version" currently is "[![Release](http://jitpack.io/v/com.github.shopsma
 * ArtifactId: clj-foundation
 * Version: [![Release](http://jitpack.io/v/com.github.shopsmart/clj-foundation.svg)](https://jitpack.io/#shopsmart/clj-foundation)
 
-### Manual build/test
+## Manual build/test
 
 ```bash
 # Build
@@ -164,6 +192,7 @@ $ lein with-profile test test
 Copyright © 2015, 2016 by ShopSmart, LLC.  Licensed under the Eclipse Public License v1.0.
 
 
-## Authors
+# Authors
 
-David Orme
+* David Orme
+* Levi Dixon
