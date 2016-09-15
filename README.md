@@ -1,16 +1,46 @@
-# clj-foundation
+# clj-foundation pre-1.0
 
-Libraries making additional simple things easy and hard things possible in Clojure that are intended for use across all Clojure projects at Brad's Deals.
+## Definition of Done for 1.0 release
 
+* On APIs - While 1.0 will be a major release with some inevitable API breakage, we will strive:
+    * To maintain API compatiblity with prior releases to the greatest extent possible
+    * To remove duplicated functionality (which may contradict the API compatibility principle)
+    * To maintain API compatibility with code copied from internal Brad's Deals projects to the greatest extent possible.
+
+* Target Clojure 1.9
+    * All functions will have type information supplied via Clojure 1.9 specs.
+    * Functions currently using plumatic/schema to specify type constraints will be migrated to Specs
+
+* On testing
+    * All functions will be unit tested using a style designed to illustrate behavior under failure modes as well as happy path scenarios.
+    * We will collectively agree on a style of testing that seems to hit the sweet spot between overspecification and underspecification.
+        * (Details are not set in stone but definitely up for negotiation)
+
+
+# Why clj-foundation?
+
+clj-foundation supplies namespaces making additional simple things easy and hard things possible in Clojure that are intended for use across all Clojure projects at Brad's Deals.
+
+* Enhances the core language in resonable, useful, and conservative ways.
+* Enables programming using a monadic style without requiring explicit monad types.
 * Describes, specifies, and illustrates best practices at Brad's Deals for working in Clojure.
-* Contains namespaces intended to extend the core language.
 * The only dependencies are Clojure, Potemkin, and Schema in order to minimize adoption friction.
+    * *(This is up for renegotiation for 1.0)*
 
 ## Features
 
 The folowing is a small sample of clj-foundation's features:
 
-### Ever had to declare a map as the result of a bunch of let variable bindings?  Now you can do that in one step with let-map.
+### Math
+
+* A Mixed Number type
+* Time conversions to/from milliseconds
+* (str (millis/->dmhs elapsed-time)) => e.g.: "5 days 2 hours 3 minutes 2 seconds"
+* A Nothing type that behaves like the identity value for Maps, Seqs, and Strings and is distinct from nil.
+* Functions converting identity values of various types/operations to and from nil.
+
+
+### Ever had to declare a map containing the result of let variable bindings?  Now you can do that in one step with let-map.
 
 ```clojure
 (let-map [meaning 42
@@ -20,7 +50,7 @@ The folowing is a small sample of clj-foundation's features:
  :secrets "nobody:*:-2:-2:Unprivileged User:/var/empty:/usr/bin/false\nroot:*:0:0:System Administrator:/var/root:/bin/sh\n...."}
 ```
 
-### Error processing and timeout handling.
+### Data/error processing enhancements and timeout handling.
 
 ```clojure
 ;; Replace a nil value with a default
@@ -61,9 +91,9 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
 ```
 
 * Interpolation variables are resolved from the following places with the following precedence:
-** Java system variables (e.g.: java -DNAME='Jack' com.foo.bar.YourMainProgram)
-** Operating system environment variables
-** Any key/value variables specified in code.
+    * Java system variables (e.g.: java -DNAME='Jack' com.foo.bar.YourMainProgram)
+    * Operating system environment variables
+    * Any key/value variables specified in code.
 
 ### Extensions to Clojure's file input functions
 
@@ -90,10 +120,8 @@ ExceptionInfo Not found: '${NAME}'  clojure.core/ex-info
 
 * Easier serialization / deserialization in various formats.  Currently supports binary and EDN formats.  Optionally can use the template language to support substitution variables inside EDN files.
 * A let-map form similar to "let" that returns its names and values as a Map--for those times the values of subsequent keys in a Map depend on the values of prior ones.
-* Math extensions supporting mixed numbers.
-* Time conversions to/from milliseconds; convert milliseconds into a single days, hours, minutes, seconds value.
 * Simple named implementations of design patterns familiar to Java developers, particularaly Singleton.
-* An implementation of None from the Option pattern (named Nothing) that behaves like the identity value in many contexts.
+
 
 ### Leiningen coordinates
 
