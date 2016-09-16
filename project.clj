@@ -5,7 +5,11 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :plugins [[lein-test-bang-bang "0.2.0"]]
+  :plugins [[lein-test-bang-bang "0.2.0"] ; lein test!! - Run each test NS in a separate JRE
+            [lein-ancient "0.6.10"]       ; lein ancient - Check for outdated dependencies
+            [lein-auto "0.1.2"]           ; e.g.: lein auto kbit   or lein auto test
+            [lein-kibit "0.1.2"]          ; lein kibit - Linter that suggests more idiomatic forms
+            [lein-catnip "0.5.1" :exclusions [org.clojure/clojure]]] ; lein edit
 
   :profiles {:test {:dependencies [[com.h2database/h2 "1.4.192"]]}
              :repl {:dependencies [[com.h2database/h2 "1.4.192"]]}}
