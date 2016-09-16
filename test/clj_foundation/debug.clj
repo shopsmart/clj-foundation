@@ -10,6 +10,7 @@
 ;;  which hasn't been maintained for 3 years.
 
 ;; Other good tools for debugging:
+;; * https://github.com/jonase/kibit
 ;; * https://github.com/dgrnbrg/spyscope
 ;; * https://github.com/zcaudate/vinyasa
 
