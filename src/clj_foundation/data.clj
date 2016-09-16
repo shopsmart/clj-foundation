@@ -1,9 +1,12 @@
 (ns clj-foundation.data
-  (:require [clj-foundation.patterns :as p]
-            [clj-foundation.errors :as err]
-            [schema.core :as s :refer [=> =>*]]
+  (:require [clojure.data.xml :as xml]
             [clojure.string :as str]
+            [clj-foundation.patterns :as p :refer [types]]
+            [clj-foundation.errors :as err]
+            [schema.core :as s :refer [=> =>* defschema]]
             [potemkin :refer [def-map-type]])
+  (:import [java.io StringReader]
+           [clojure.lang Named])
   (:gen-class))
 
 

@@ -3,7 +3,8 @@
             [schema.core :as s :refer [=> =>*]]
             [clj-foundation.unit-test-common :as common]
             [clj-foundation.errors :refer :all]
-            [clj-foundation.patterns :as p :refer [any?]]
+            [clj-foundation.data :refer [any?]]
+            [clj-foundation.patterns :as p]
             [clj-foundation.millis :as millis]))
 
 
