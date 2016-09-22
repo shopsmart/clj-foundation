@@ -69,7 +69,7 @@
 
   If the failure isn't already an exception or a seq, it is converted into one first using ex-info.  In this case,
   the :cause in the ex-info map will be the original failure object."
-  [failure :- (s/pred #(failure? %) "(failure? failure) is truthy")]
+  [failure :- (s/pred failure? "(failure? failure) is truthy")]
   (cond
     (seq? failure)                (map exception<- failure)
     (instance? Throwable failure) (lazy-seq (cons failure (seq<- (.getCause failure))))
@@ -117,9 +117,9 @@
   considered errors.  After tries attempts, the last error is returned."
   [tries pause-millis f & args]
   (let [res (try* (apply f args))]
-    (if (not (failure? res))
+    (if-not (failure? res)
       res
-      (if (= 0 tries)
+      (if (zero? tries)
         res
         (do
           (if (instance? Throwable res)
@@ -136,7 +136,7 @@
   [tries pause-millis f & args]
   (let [res (try {:value (apply f args)}
                  (catch Exception e
-                   (if (= 0 tries)
+                   (if (zero? tries)
                      (throw e)
                      {:exception e})))]
     (if (:exception res)

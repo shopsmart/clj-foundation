@@ -1,25 +1,19 @@
 (ns clj-foundation.grep
-  "Unix-style grep for arbitrary Clojure nested collections."
+  "Unix-style grep for arbitrary Clojure nested collections.  Returns container(s) with at
+  least one element matching a literal, regex, substring, or predicate.
+
+  Examples:
+
+  (grep 42         {:1 {:a 11} :2 {:b 42}})                ==> {:b 42}
+  (grep #\"[0-9]\" [{:a \"42\"} {:b \"Hello, world\"}])    ==> {:a \"42\"}
+  (grep \"world\"  [{:1 \"Hello\"} {:1 \"Hello, world\"}]) ==> {:1 \"Hello, world\"}
+  (grep zero?      [[1 2 3] [4 5 6] [7 8 9] [0 1 2]])      ==> [0 1 2]"
   (:require [clojure.zip :as zip]
             [clojure.set :as set]
             [clojure.string :as str]
             [clj-foundation.tree-visit :as v]
             [clj-foundation.errors :refer [must-be]]
             [clj-foundation.patterns :refer [nothing arity]]))
-
-
-(defn- update-breadcrumb [old-path loc]
-  (let [parent (v/parent-container loc)
-        new-depth (v/depth loc)
-        new-index (v/index loc)
-        new-node (zip/node loc)]
-    (if (or (map? new-node) (v/root-node? (zip/up loc)))
-      old-path
-      (if (map? parent)
-        (if (not (v/traversable-coll? new-node))
-          (conj (vec (take (- new-depth 1) old-path)) new-node)
-          old-path)
-        (conj (vec (take (- new-depth 1) old-path)) new-index)))))
 
 
 (defn- found-match-container
@@ -38,8 +32,8 @@
 (defn- grep-predicate
   [pattern & node-transformers]
   (let [pred (cond
-               (instance? java.util.regex.Pattern pattern) (fn [node] (re-find pattern (.toString node)))
-               (string? pattern)                           (fn [node] (.contains (.toString node) pattern))
+               (instance? java.util.regex.Pattern pattern) (fn [node] (re-find pattern (str node)))
+               (string? pattern)                           (fn [node] (.contains (str node) pattern))
                (fn? pattern)                               (do (must-be "Grep pattern functions must be arity 1" (= (arity pattern) 1))
                                                                pattern)
                :else                                       (fn [node] (= pattern node)))]
@@ -69,7 +63,7 @@
   (let [grep-match? (apply grep-match?-fn pattern node-transformers)
         breadcrumb (atom [])]
     (fn [node state loc]
-      (swap! breadcrumb update-breadcrumb loc)
+      (swap! breadcrumb v/update-breadcrumb loc)
       (grep-match? node state loc @breadcrumb found-match-fn))))
 
 

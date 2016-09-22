@@ -13,9 +13,8 @@
 (defn any?
   "Returns coll if any element in coll satisfies predicate."
   [predicate coll]
-  (if (not-empty (filter predicate coll))
-    coll
-    nil))
+  (when (not-empty (filter predicate coll))
+    coll))
 
 
 (s/defn replace-if :- s/Any
@@ -28,7 +27,7 @@
 
   ([value :- s/Any, predicate :- (=> s/Any [s/Any])]
    (let [maybe-result (predicate value)]
-     (if maybe-result
+     (or
        maybe-result
        value)))
 
@@ -77,7 +76,7 @@
   * The identity predicate may optionally be overridden in the second parameter."
   ([value      :- s/Any
     identity-p :- (=> s/Bool [s/Any])]
-   (if (identity-p value) nil value))
+   (when-not (identity-p value) value))
 
   ([value      :- s/Any]
    (cond

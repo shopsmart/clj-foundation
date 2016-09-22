@@ -1,7 +1,7 @@
 (ns clj-foundation.millis
   "Convert various time values to milliseconds and back"
   (:require [schema.core :as s :refer [=> =>*]]
-            [clojure.string :refer [trimr]]
+            [clojure.string :as str :refer [trimr]]
             [clj-foundation.patterns :refer [let-map]]
             [clj-foundation.math :refer [->MixedNumber INumberParts]])
   (:gen-class))
@@ -67,10 +67,10 @@
   (toString [this]
     (let [parts (.decompose this)]
       (trimr
-       (apply str
-              (map (fn [part]
-                     (let [whole (:whole (.decompose (part parts)))]
-                       (if (> whole 0)
-                         (str whole (second (str part)) " ")
-                         "")))
-                   [:days :hours :minutes :seconds]))))))
+       (str/join
+        (map (fn [part]
+               (let [whole (:whole (.decompose (part parts)))]
+                 (if (pos? whole)
+                   (str whole (second (str part)) " ")
+                   "")))
+             [:days :hours :minutes :seconds]))))))

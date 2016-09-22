@@ -139,7 +139,7 @@
   the current one in a tree-visit session.
 
   Starting with [] representing the root object in a Clojure nested graph, to
-  maintain the breadcrumb vector, after traversing the graph with a call to
+  maintain the breadcrumb vector, after traversing to a new loc with a call to
   (zip/next cursor) or similar, call (update-breadcrumb old-breadcrumb new-loc)
   to obtain a new breadcrumb vector corresponding with the new location."
   [old-path loc]
@@ -150,7 +150,7 @@
     (if (or (instance? Map$Entry new-node) (root-node? loc))
       old-path
       (if (instance? Map$Entry parent)
-        (if (not (traversable-coll? new-node))
-          (conj (vec (take (- new-depth 1) old-path)) new-node)
+        (if-not (traversable-coll? new-node)
+          (conj (vec (take (dec new-depth) old-path)) new-node)
           old-path)
-        (conj (vec (take (- new-depth 1) old-path)) new-index)))))
+        (conj (vec (take (dec new-depth) old-path)) new-index)))))

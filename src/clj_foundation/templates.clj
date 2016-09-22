@@ -93,8 +93,9 @@
   [substitutions :- {s/Keyword s/Any}
    var           :- s/Keyword
    & options     :- [s/Any]]
-  (-> (apply resolve-var substitutions var options)
-      (value-or (fn [_] (str "${" (name var) "}")))))
+  (value-or
+   (apply resolve-var substitutions var options)
+   (fn [_] (str "${" (name var) "}"))))
 
 
 (defn- re-seq-key->value

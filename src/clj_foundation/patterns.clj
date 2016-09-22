@@ -9,10 +9,10 @@
 
 (defn types
   "Returns a schema that matches the listed surface types only (e.g.: primitive or collection types but
-  not contents)."
+  not contents).  Only designed for schemas that are (instance? java.lang.Class)."
   [& schemas]
-  (let [type-names (map #(.getName %) schemas) ;; FIXME: This only works for schemas that are (instance? java.lang.Class)
-        type-name-string (apply str (interpose ", " type-names))]
+  (let [type-names (map #(.getName %) schemas)
+        type-name-string (str/join ", " type-names)]
     (s/named (apply s/cond-pre schemas) type-name-string)))
 
 
@@ -127,8 +127,7 @@
 (s/defn something? :- s/Any
   "Returns value if value is not nothing ; else returns nil."
   [value :- s/Any]
-  (if (instance? Nothing value)
-    nil
+  (when-not (instance? Nothing value)
     value))
 
 
@@ -189,10 +188,10 @@
   [& all]
   (let [args# (vec (take-while #(or (vector? %1)
                                     (map? %1)
-                                    (not (= (name %1) "=>")))
+                                    (not= (name %1) "=>"))
                                all))
         argCount (count args#)
-        expr (last (split-at (+ argCount 1) all))]
+        expr (last (split-at (inc argCount) all))]
     (cond
       (seq? (first expr))    `(fn ~args# (do ~@expr))
       (vector? (first expr)) `(fn ~args# ~@expr)

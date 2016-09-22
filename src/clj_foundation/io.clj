@@ -146,8 +146,7 @@
   the following additions: ResourceOverrideMap and ResourceOverrideVector.  See: (doc schema-name)
   for more information on these schema types."
   [file-input :- ExtendedFileInputs]
-  (-> (normalize-file-input file-input)
-      io/input-stream))
+  (io/input-stream (normalize-file-input file-input)))
 
 
 (s/defn read-file :- s/Str

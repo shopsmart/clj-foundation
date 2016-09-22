@@ -47,10 +47,10 @@
      (let [prev (volatile! initial-value)]
        (fn
          ([] (reducing-fn))
-         ([result] (if (not= @prev ::none)
-                     (do (let [final-result (reducing-fn result @prev)]
+         ([result] (if-not (= @prev ::none)
+                     (let [final-result (reducing-fn result @prev)]
                          (vreset! prev ::none)
-                         final-result))
+                         final-result)
                      (reducing-fn result)))
          ([result input]
           (let [prior @prev]
