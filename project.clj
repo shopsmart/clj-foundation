@@ -9,12 +9,7 @@
             [lein-ancient "0.6.10"]       ; lein ancient - Check for outdated dependencies
             [lein-auto "0.1.2"]           ; e.g.: lein auto kbit   or lein auto test
             [lein-kibit "0.1.2"]          ; lein kibit - Linter that suggests more idiomatic forms
-            [lein-catnip "0.5.1" :exclusions [org.clojure/clojure]]] ; lein edit
-
-  :profiles {:test {:dependencies [[com.h2database/h2 "1.4.192"]]}
-             :repl {:dependencies [[com.h2database/h2 "1.4.192"]]}}
-
-  :aot :all
+            ]
 
   ;; Used in clj-foundation.config unit tests
   :jvm-opts ["-DCONFIG-PROD=/tmp/_test-config-prod.edn"]
