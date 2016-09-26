@@ -160,10 +160,6 @@
   (lazy-seq (cons c (constant-seq c))))
 
 
-(defn zipmap-data [keywords data]
-  (map #(zipmap keywords %) data))
-
-
 (s/defn set-map-entries :- {s/Any s/Any}
   "Returns a new copy of m where for all [k v] => if k is in entries, v is set to new-value."
   [m         :- {s/Keyword s/Any}
@@ -173,11 +169,15 @@
     (merge m new-entries)))
 
 
-(defn remove-header-row [data]
+(defn remove-header-row
+  "When processing CSV, frequently we want to throw out the header row."
+  [data]
   (rest data))
 
 
-(defn parse-xml [xml]
+(defn parse-xml
+  "Parse XML from a String"
+  [xml]
   (xml/parse (StringReader. xml)))
 
 
