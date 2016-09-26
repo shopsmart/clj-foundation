@@ -1,7 +1,8 @@
 (ns clj-foundation.tree-visit
   "Visitor pattern implementation for arbitrary Clojure data structures."
   (:require [clojure.zip :as zip]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [clj-foundation.patterns :as p])
   (:import [clojure.lang IPersistentSet IPersistentList IPersistentVector IPersistentMap ISeq]
            [java.util Map Map$Entry])
   (:gen-class))
@@ -86,9 +87,9 @@
 
 
 (defn root-node?
-  "Is this node at the root of the collection?  (nil? is redundant but explicit)"
+  "Is the cursor at the root of the collection?"
   [n]
-  (nil? (zip/up n)))
+  (nil? (zip/up n)))                    ; (nil? is redundant but explicit)
 
 
 (defn parent-container
@@ -100,6 +101,17 @@
       (root-node? loc)             (zip/node loc)
       (result-coll? parent-result) parent-result
       :else                        (parent-container (zip/up loc)))))
+
+
+
+(defn node-at
+  "Return the data node starting at cursor after applying zip/traversal-fns.
+  Returns patterns/NO-RESULT-ERROR if there is no node at the specified position."
+  [loc & traversal-fns]
+  (let [new-loc (reduce (fn [l t] (some-> l t)) loc traversal-fns)]
+    (if new-loc
+      (zip/node new-loc)
+      p/NO-RESULT-ERROR)))
 
 
 (defn depth
@@ -119,3 +131,26 @@
   This value is only meaningful if the current collection is sequential."
   [loc]
   (count (zip/lefts loc)))
+
+
+
+(defn update-breadcrumb
+  "A breadcrumb vector contains the human-readable path from the root object to
+  the current one in a tree-visit session.
+
+  Starting with [] representing the root object in a Clojure nested graph, to
+  maintain the breadcrumb vector, after traversing to a new loc with a call to
+  (zip/next cursor) or similar, call (update-breadcrumb old-breadcrumb new-loc)
+  to obtain a new breadcrumb vector corresponding with the new location."
+  [old-path loc]
+  (let [parent (node-at loc zip/up)
+        new-depth (depth loc)
+        new-index (index loc)
+        new-node (zip/node loc)]
+    (if (or (instance? Map$Entry new-node) (root-node? loc))
+      old-path
+      (if (instance? Map$Entry parent)
+        (if-not (traversable-coll? new-node)
+          (conj (vec (take (dec new-depth) old-path)) new-node)
+          old-path)
+        (conj (vec (take (dec new-depth) old-path)) new-index)))))

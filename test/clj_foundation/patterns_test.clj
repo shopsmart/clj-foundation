@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
             [clj-foundation.unit-test-common :as common]
+            [clj-foundation.data :refer [identity->nil]]
             [clj-foundation.patterns :refer :all]
             [clj-foundation.errors :refer [try*]]))
 
@@ -60,26 +61,6 @@
       (is (= "something" (something? "something")))
       (is (not= nothing (something? nothing)))
       (is (nil? (something? nothing))))))
-
-
-(deftest empty->nil-test
-  (testing "Numbers use zero? as their default identity predicate"
-    (is (nil?                (empty->nil 0)))
-    (is (= 42                (empty->nil 42))))
-
-  (testing "Other values depend on (empty? value) to determine emptiness"
-    (is (nil?                (empty->nil "")))
-    (is (= "The quick brown" (empty->nil "The quick brown")))
-    (is (nil?                (empty->nil [])))
-    (is (= [:something]      (empty->nil [:something]))))
-
-  (testing "The second parameter overrides the identity function"
-    (is (nil?                (empty->nil 1 #{1})))
-    (is (= 42                (empty->nil 42 #{1})))
-    (is (nil?                (empty->nil "nil" #{"nil" "none" " "})))
-    (is (nil?                (empty->nil " " #{"nil" "none" " "})))
-    (is (nil?                (empty->nil "none" #{"nil" "none" " "})))
-    (is (= "Success"         (empty->nil "Success" #{"nil" "none" " "})))))
 
 
 ;; let-map -------------------------------------------------------------------------------------------------

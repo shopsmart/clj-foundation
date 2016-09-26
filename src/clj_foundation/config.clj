@@ -15,7 +15,7 @@
   "Reads config object via the path represented by keys and returns the resulting object."
   [config & keys]
   (try
-      (let [result (reduce (fn [collection key] (get collection key)) config keys)]
+      (let [result (reduce get config keys)]
 
         (if (nil? result)
           (throw (IllegalStateException. (str "Error finding config: " keys)))

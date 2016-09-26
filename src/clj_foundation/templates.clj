@@ -5,7 +5,8 @@
             [clojure.tools.logging :as log]
             [schema.core :as s :refer [=> =>* defschema]]
             [clj-foundation.patterns :as p :refer [types nothing]]
-            [clj-foundation.errors :as err :refer [try*]])
+            [clj-foundation.errors :as err :refer [try*]]
+            [clj-foundation.data :refer [value-or]])
   (:import [clojure.lang ISeq]
            [java.io BufferedReader StringReader])
   (:gen-class))
@@ -92,8 +93,9 @@
   [substitutions :- {s/Keyword s/Any}
    var           :- s/Keyword
    & options     :- [s/Any]]
-  (-> (apply resolve-var substitutions var options)
-      (err/value-or (fn [_] (str "${" (name var) "}")))))
+  (value-or
+   (apply resolve-var substitutions var options)
+   (fn [_] (str "${" (name var) "}"))))
 
 
 (defn- re-seq-key->value
