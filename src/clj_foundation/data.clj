@@ -169,11 +169,15 @@
     (merge m new-entries)))
 
 
-(defn remove-header-row [data]
+(defn remove-header-row
+  "When processing CSV, frequently we want to throw out the header row."
+  [data]
   (rest data))
 
 
-(defn parse-xml [xml]
+(defn parse-xml
+  "Parse XML from a String"
+  [xml]
   (xml/parse (StringReader. xml)))
 
 
