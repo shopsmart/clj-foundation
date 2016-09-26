@@ -160,10 +160,6 @@
   (lazy-seq (cons c (constant-seq c))))
 
 
-(defn zipmap-data [keywords data]
-  (map #(zipmap keywords %) data))
-
-
 (s/defn set-map-entries :- {s/Any s/Any}
   "Returns a new copy of m where for all [k v] => if k is in entries, v is set to new-value."
   [m         :- {s/Keyword s/Any}

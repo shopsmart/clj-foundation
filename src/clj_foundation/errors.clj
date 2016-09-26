@@ -275,10 +275,8 @@
     value))
 
 
-;; FIXME: The following two do roughly the same thing.  Consolidate.
-
 (s/defn not-failure :- s/Any
-  "If value is not a failure, returns it, else throws IllegalArgumentExceoption with
+  "If value is not a failure, returns it, else throws IllegalStateExceoption with
   the specified message"
   [value :- s/Any, message :- s/Str]
   (if (nil? value)
