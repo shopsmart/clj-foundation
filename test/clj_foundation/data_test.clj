@@ -92,7 +92,7 @@
 
 (deftest map<-test
   (testing "Convert (possibly-nested) objects to a Map"
-    ;; Preferred syntax
+    ;; Preferred syntax uses keywords to name JavaBean properties
     (is (= {:first-name          "John"
             :last-name           "Doe"
             :address             jd-address}
