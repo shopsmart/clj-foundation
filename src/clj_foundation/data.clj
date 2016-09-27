@@ -242,7 +242,7 @@
     (map symbol (map getter (str/split property-name #"\.")))))
 
 
-(defmacro map<-
+(defmacro bean-props
   "Like (bean... but allows specifying the properties to convert and allows chained nested properties.
   Property names are translated to idiomatic hyphenated Clojure keywords in the resulting Map.
 
@@ -252,7 +252,7 @@
 
   then:
 
-  (map<- john-doe :firstName :lastName :address)
+  (bean-props john-doe :firstName :lastName :address)
   ==>
   {:first-name          \"John\"
    :last-name           \"Doe\"
@@ -260,7 +260,7 @@
 
   One step farther:
 
-  (map<- john-doe :firstName :lastName :address.street :address.street2 :address.city :address.state :address.postalCode)
+  (bean-props john-doe :firstName :lastName :address.street :address.street2 :address.city :address.state :address.postalCode)
   ==>
   {:first-name          \"John\"
    :last-name           \"Doe\"
@@ -273,3 +273,7 @@
   (->> (if (seq props) props [])
        (map (fn [prop] [(keywordize (prop-name prop)) `(.. ~object ~@(getter-seq prop) )]))
        (into {})))
+
+
+#_(defmacro bean<-
+  [class kv-map])

@@ -90,13 +90,13 @@
 (def john-doe (Person. "John" "Doe" jd-address))
 
 
-(deftest map<-test
+(deftest bean-props-test
   (testing "Convert (possibly-nested) objects to a Map"
     ;; Preferred syntax uses keywords to name JavaBean properties
     (is (= {:first-name          "John"
             :last-name           "Doe"
             :address             jd-address}
-           (map<- john-doe :firstName :lastName :address)))
+           (bean-props john-doe :firstName :lastName :address)))
 
     (is (= {:first-name          "John"
             :last-name           "Doe"
@@ -105,7 +105,7 @@
             :address.city        "Acme"
             :address.state       "AZ"
             :address.postal-code "99999"}
-           (map<- john-doe :firstName :lastName :address.street :address.street2 :address.city :address.state :address.postalCode)))
+           (bean-props john-doe :firstName :lastName :address.street :address.street2 :address.city :address.state :address.postalCode)))
 
     ;; Also works
     (is (= {:first-name          "John"
@@ -115,6 +115,6 @@
             :address.city        "Acme"
             :address.state       "AZ"
             :address.postal-code "99999"}
-           (map<- john-doe firstName lastName address.street address.street2 address.city address.state address.postalCode)))))
+           (bean-props john-doe firstName lastName address.street address.street2 address.city address.state address.postalCode)))))
 
 (run-tests)
