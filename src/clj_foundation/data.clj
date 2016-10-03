@@ -35,15 +35,17 @@
 
   ([value :- s/Any, predicate :- (=> s/Any [s/Any]), replacement :- s/Any]
    (if (predicate value)
-     value
-     replacement)))
+     replacement
+     value)))
 
 
 (s/defn replace-nil :- s/Any
   "Accepts a value that cannot be nil; if it is not nil it returns it, else it
   returns its replacement."
   [maybe-nil :- s/Any, replacement :- s/Any]
-  (replace-if maybe-nil #{nil} replacement))
+  (if (nil? maybe-nil)
+    replacement
+    maybe-nil))
 
 
 (s/defn nothing->identity :- s/Any
