@@ -16,7 +16,7 @@
   [& more]
   (let [line-col (vec (meta &form))
         s        (apply str *ns* line-col " " more)]
-    `s))
+    `~s))
 
 
 ;; Extensible failure objects / test multimethod -------------------------------------
