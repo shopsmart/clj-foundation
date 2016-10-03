@@ -81,6 +81,15 @@
   seq<-)
 
 
+(s/defn stack-trace<- :- s/Str
+  "Returns the stack trace associated with e as a String."
+  [e :- Throwable]
+  (let [output (java.io.ByteArrayOutputStream.)
+        printer (java.io.PrintStream. output)]
+    (.printStackTrace e printer)
+    (.toString output)))
+
+
 (defmacro try*
   "A variant of try that translates exceptions into return values or a
   specified default value.  Note that body must be a single statement.
