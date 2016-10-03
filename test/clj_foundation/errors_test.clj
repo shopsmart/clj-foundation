@@ -42,6 +42,34 @@
     (is (not (failure? (Object.))))))
 
 
+(let [e1    (Exception. "Just one")
+
+      e2'   (Exception. "I'm guilty.")
+      e2    (Exception. "An exception with a cause." e2')
+
+      e3''  (Exception. "only table or database owner can vacuum it")
+      e3'   (Exception. "Look deeper" e3'')
+      e3    (Exception. "An exception with a fatal cause." e3')
+
+      e4''' (Exception. "Lotssss offff causses, my Preciousss!")
+      e4''  (Exception. "only table or database owner can vacuum it" e4''')
+      e4'   (Exception. "Look deeper" e4'')
+      e4    (Exception. "An exception with a fatal cause." e4')
+
+      e5    (ex-info "Master exception" {} e4)]
+
+  (deftest seq<-test
+    (testing "One exception with no cause returns a list of that exception only"
+      (is (= "Just one" (.getMessage (first (seq<- e1)))))
+      (is (= 1 (count (seq<- e1)))))
+
+    (testing "Nested exceptions add items to the exception list"
+      (is (= 2 (count (seq<- e2))))
+      (is (= 3 (count (seq<- e3)))))
+
+    (testing "ex-info :via maps are parsed"
+      (is (= 5 (count (seq<- e5)))))))
+
 
 (deftest retry?-test
   (testing "Retry up to :max-retries times"

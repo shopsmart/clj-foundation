@@ -9,6 +9,49 @@
 
 (common/register-fixtures)
 
+
+(deftest any?-test
+  (testing "One element, no match"
+    (is (not (any? even? [1]))))
+
+  (testing "One element, matches"
+    (is (= [2] (any? even? [2]))))
+
+  (testing "Two elements, no match"
+    (is (nil? (any? even? [1 3]))))
+
+  (testing "Two elements, second matches"
+    (is (any? even? [1 4])))
+
+  (testing "Five elements, no match"
+    (is (nil? (any? even? [1 3 5 7 9]))))
+
+  (testing "Five elements, second-to-last matches"
+    (is (any? even? [1 3 5 8 9])))
+
+  (testing "Five elements, multiple matches"
+    (is (any? even? [1 10 5 8 9]))))
+
+
+(deftest replace-if-test
+  (testing "binary form"
+    (is (= ""            (replace-if "replacement" (constantly ""))))
+    (is (= "replacement" (replace-if "replacement" (constantly false)))))
+
+  (testing "terniary form - replace"
+    (is (= "replacement" (replace-if "foo" #{"foo" "bar" "baz"} "replacement")))
+    (is (= "replacement" (replace-if nil #(nil? %) "replacement"))))
+
+  (testing "terniary form - do not replace"
+    (is (= "original" (replace-if "original" #{"New!"} "replacement")))
+    (is (= "original" (replace-if "original" (constantly false) "replacement")))))
+
+
+(deftest replace-nil-test
+  (is (= "" (replace-nil nil "")))
+  (is (= "data" (replace-nil "data" ""))))
+
+
 (deftest identity->nil-test
   (testing "Numbers use zero? as their default identity predicate"
     (is (nil?                (identity->nil 0)))
@@ -58,4 +101,4 @@
     (is (= :nested.property-name (keywordize "nested.propertyName")))))
 
 
-#_(run-tests)
+(run-tests)
