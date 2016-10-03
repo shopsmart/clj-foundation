@@ -6,19 +6,29 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn])
 
-  (:import [java.io InputStream File ByteArrayInputStream]
+  (:import [java.io InputStream File ByteArrayInputStream ByteArrayOutputStream]
            [java.net URI URL Socket]))
 
 
 ;; From the deprecated clojure.contrib.io library
 ;; https://github.com/clojure/clojure-contrib/blob/b6c6f0fa165975c416c7d135d1a844353527493b/src/main/clojure/clojure/contrib/io.clj#L352
 (defmacro with-out-writer
-  "Opens a writer on f, binds it to *out*, and evalutes body.
+  "Opens a writer on f, binds it to *out*, and evaluates body.
   Anything printed within body will be written to f."
   [f & body]
   `(with-open [stream# (clojure.java.io/writer ~f)]
      (binding [*out* stream#]
        ~@body)))
+
+
+(defmacro with-out-string
+  "Evaluate body, capturing *out* to a string.  Returns contents of string."
+  [f & body]
+  `(let [baos# (ByteArrayOutputStream.)]
+     (with-open [stream# (clojure.java.io/writer baos#)]
+       (binding [*out* stream#]
+         ~@body))
+     (str baos#)))
 
 
 (s/defn string-input-stream :- InputStream
