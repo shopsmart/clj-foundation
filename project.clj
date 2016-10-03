@@ -1,4 +1,4 @@
-(defproject com.github.shopsmart/clj-foundation "0.9.13"
+(defproject com.github.shopsmart/clj-foundation "0.9.14"
   :description "Common patterns enabling simpler to be easier and harder to be possibler."
   :url "https://github.com/shopsmart/clj-foundation"
 
@@ -19,5 +19,4 @@
                  [org.clojure/data.csv "0.1.3"]
                  [org.clojure/data.xml "0.0.8"]
                  [prismatic/schema "1.1.1"]
-                 [potemkin "0.4.3"]
-                 [org.clojure/java.jdbc "0.6.2-alpha2"]])
+                 [potemkin "0.4.3"]])
