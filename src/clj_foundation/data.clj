@@ -1,7 +1,7 @@
 (ns clj-foundation.data
   (:require [clojure.data.xml :as xml]
             [clojure.string :as str]
-            [clj-foundation.patterns :as p :refer [types]]
+            [clj-foundation.patterns :as p :refer [types f]]
             [clj-foundation.errors :as err]
             [schema.core :as s :refer [=> =>* defschema]]
             [potemkin :refer [def-map-type]])
@@ -9,6 +9,8 @@
            [clojure.lang Named])
   (:gen-class))
 
+
+;; Predicates and data conversion functions -------------------------------------------------
 
 (defn any?
   "Returns coll if any element in coll satisfies predicate."
@@ -110,6 +112,18 @@
   (str/replace (name value) #"[\-_]" replacement))
 
 
+(s/defn getter :- s/Str
+  [property-name :- s/Str]
+  "Translate property-name to its Java getter syntax.  Handles hyphenated-names and underscore_names as well as
+  names that are already camelCase."
+  (->> (str/split property-name #"[\_-]")
+       (map (f part =>
+               (str (str/upper-case (first part))
+                    (apply str (rest part)))))
+       (str/join)
+       (str "get")))
+
+
 (s/defn ->SNAKE_CASE :- s/Str
   "Convert any Named or String object to SNAKE_CASE.  Does not handle camelCase."
   [value :- (types s/Str Named)]
@@ -128,21 +142,35 @@
   (str/replace (str value) match "-"))
 
 
-(defn- keywordize
-  "Return dasherized keyword."
-  [string]
-  (keyword (str/lower-case
-             (dasherize #"[\s/_]" string))))
+(defn keywordize
+  "Return dasherized keyword from camelCase underscore_names, namespaced/names, etc.
+  See the unit tests for the complete set of supported cases.
 
-(defn- string->keyword
-  "Convert string name to a keyword
+  Ex. camelCase          -> :camel-case
+      some_name          -> :some-name
+      customer.firstName -> :customer.first-name"
+  [name]
+  (->> name
+       (re-seq #"([A-Z _/]?[a-z1-9$\.]*)") ; Seq of tokens: Leading delimeter + following chars
+       (map first)                         ; Take 1st element of each tuple in match seq
+       (map #(str/replace % #"[ _/]" ""))  ; Eliminate explicit delimeter characters
+       (filter #(not (empty? %)))          ; Some tokens will now be empty; throw them out
+       (str/join "-")                      ; Back to a string, joined by "-"
+       (str/lower-case)                    ; ...
+       (keyword)))
+
+
+(s/defn string->keyword :- s/Keyword
+  "Convert string name to a keyword respecting naming-exceptions.
    Ex. some_name -> :some-name"
-  ([name naming-exceptions]
+  ([name :- s/Str
+    naming-exceptions :- #{s/Str}]
     (if-let [name-exception (naming-exceptions name)]
       name-exception
       (keywordize name)))
-  ([name]
+  ([name :- s/Str]
     (keywordize name)))
+
 
 (defn string-list->keywords
   "Convert a list of strings to a list of keywords"

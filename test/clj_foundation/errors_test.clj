@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
             [clj-foundation.unit-test-common :as common]
+            [clj-foundation.io :as io]
             [clj-foundation.errors :refer :all]
             [clj-foundation.data :refer [any?]]
             [clj-foundation.patterns :as p]
@@ -9,6 +10,15 @@
 
 
 (common/register-fixtures)
+
+
+(deftest trace-test
+  (let [result (io/with-out-string (trace "testing 123"))]
+    (testing "result contains ns, line, and column of trace message"
+      (is (.contains (str *ns*) result))
+      (is (.contains ":line" result))
+      (is (.contains ":column" result)))))
+
 
 (deftest failure?--predefined-failure-modes-test
   (testing "Nil is not a failure"
