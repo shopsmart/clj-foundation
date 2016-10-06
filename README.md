@@ -13,6 +13,11 @@ clj-foundation supplies namespaces making additional simple things easy and hard
 
 * Hara: http://docs.caudate.me/hara/index.html
 
+## High-quality domain-specific libraries complimenting this
+
+* Cassandra as a mutable, versioned map: https://github.com/MyPost/cassius
+* Git from the Clojure REPL: https://github.com/zcaudate/gita
+
 
 # Features
 
