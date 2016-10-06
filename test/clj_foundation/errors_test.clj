@@ -6,7 +6,8 @@
             [clj-foundation.errors :refer :all]
             [clj-foundation.data :refer [any?]]
             [clj-foundation.patterns :as p]
-            [clj-foundation.millis :as millis]))
+            [clj-foundation.millis :as millis])
+  (:import [java.util Date]))
 
 
 (common/register-fixtures)
@@ -69,6 +70,43 @@
 
     (testing "ex-info :via maps are parsed"
       (is (= 5 (count (seq<- e5)))))))
+
+
+(deftest expect-within-test
+  (testing "Immediate success returns immediately"
+    (let [before  (.getTime (Date.))
+          success (expect-within (millis/<-seconds 2)
+                                 (constantly true)
+                                 "Always succeeds immediately")
+          after   (.getTime (Date.))
+          time    (- after before)]
+
+      (is success)
+      (is (< time (millis/<-seconds 1/4)))))
+
+  (testing "Eventual success succeeds"
+    (let [tries   (atom 0)
+          before  (.getTime (Date.))
+          success (expect-within (millis/<-seconds 5)
+                                 (fn [] (swap! tries inc) (< 3 @tries))
+                                 "Always succeeds eventually")
+          after   (.getTime (Date.))
+          time    (- after before)]
+
+      (is success)
+      (is (< time (millis/<-seconds 4)))))
+
+  (testing "Taking too much time throws IllegalStateException"
+    (let [timeout (millis/<-seconds 1)
+          before  (.getTime (Date.))
+          result  (try* (expect-within timeout
+                                       (constantly false)
+                                       "Never succeeds"))
+          after   (.getTime (Date.))
+          time    (- after before)]
+
+    (is (instance? IllegalStateException result))
+    (is (< timeout time)))))
 
 
 (deftest retry?-test
