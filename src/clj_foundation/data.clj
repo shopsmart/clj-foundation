@@ -167,20 +167,20 @@
    Ex. some_name -> :some-name"
   ([name :- s/Str
     naming-exceptions :- #{s/Str}]
-    (if-let [name-exception (naming-exceptions name)]
-      name-exception
-      (keywordize name)))
+   (if-let [name-exception (naming-exceptions name)]
+     name-exception
+     (keywordize name)))
   ([name :- s/Str]
-    (keywordize name)))
+   (keywordize name)))
 
 
 (defn string-list->keywords
   "Convert a list of strings to a list of keywords"
   ([list]
-    (map (fn [string]
+   (map (fn [string]
          (string->keyword (name string))) list))
   ([list naming-exceptions]
-    (map (fn [string]
+   (map (fn [string]
          (string->keyword (name string) naming-exceptions)) list)))
 
 

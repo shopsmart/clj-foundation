@@ -3,6 +3,7 @@
             [clj-foundation.errors :as err]
             [clj-foundation.templates :as template]
             [clj-foundation.patterns :as p]
+            [clj-foundation.data :as data]
             [clojure.java.io :as io]
             [clojure.edn :as edn])
 
@@ -142,7 +143,9 @@
 
     (try
       (s/validate ClojureFileInputs result)
-      result
+      (if (string? result)
+        (data/replace-nil (io/resource result) result)
+        result)
       (catch Throwable e
         (throw (IllegalArgumentException.
                 (str "Expected result to be one of " (s/explain ClojureFileInputs)
@@ -177,7 +180,7 @@
       (= argc 1) (read-file {:resource (first resource-spec)})
       (= argc 2) (read-file [(first resource-spec) (second resource-spec)])
       :else (throw (IllegalArgumentException.
-                    (str "resource-as-string: Illegal arg list: " resource-spec) )))))
+                    (str "resource-as-string: Illegal arg list: " resource-spec))))))
 
 
 (defn- parse-extended-file-location [input subs]

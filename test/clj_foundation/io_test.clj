@@ -15,6 +15,10 @@
 
 
 (deftest normalize-file-input-test
+  (testing "If a string input references a resource, a resource URL is returned."
+    (is (instance? URL (normalize-file-input "_test-config.edn")))
+    (is (= "/some/file/path" (normalize-file-input "/some/file/path"))))
+
   (testing "Return the default value as a resource when the envar is not defined"
     (is (instance? URL (normalize-file-input ["CONFIG-PRODDD" "_test-config.edn"]))))
 
