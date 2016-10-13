@@ -115,7 +115,7 @@
           (throw (IllegalStateException. error-message))
           (if-not completed
             (do
-              (Thread/sleep 500)
+              (Thread/sleep 100)
               (recur (predicate)))
             completed))))))
 

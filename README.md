@@ -1,50 +1,6 @@
-# clj-foundation pre-1.0
+# clj-foundation
 
-## Definition of Done for 1.0 release
-
-* On APIs - While 1.0 will be a major release with some inevitable API breakage, we will strive:
-    * To maintain API compatiblity with prior releases to the greatest extent possible
-    * To remove duplicated functionality (which may contradict the API compatibility principle)
-    * To maintain API compatibility with code copied from internal Brad's Deals projects to the greatest extent possible.
-    * Clear naming convention for namespaces that are provisional (non-frozen, WIP) API.
-
-* Known tech debt that may influence APIs
-    * Consider migrating db.clj's local configuration mechanism to config.clj (and then make an instance of the generic implementation inside db.clj)
-
-* Target Clojure 1.9
-    * All functions will have type information supplied via Clojure 1.9 specs.
-    * Functions currently using plumatic/schema to specify type constraints will be migrated to Specs
-
-* On testing
-    * All functions will be unit tested using a style designed to illustrate behavior under failure modes as well as happy path scenarios.
-    * We will collectively agree on a style of testing that seems to hit the sweet spot between overspecification and underspecification.
-        * (Details are not set in stone but definitely up for negotiation)
-    * When defects are detected, we will first reproduce the defect's root cause using a failing test case that will prevent the defect from reoccurring without the test notifying us.
-    * Generative testing with Specs
-    * Integrate kbitz (suggest Clojure idioms), some Clojure linting library; if it's easy to make these available to clients of clj-foundation, do so.
-
-* Debug library
-    * dbg, ppdbg macros
-    * trace?
-
-* Documentation
-    * Machine generate as much as possible?
-
-* Make clj_infrastructure as a separate library
-    * Move db.clj there?
-    * Abstract db.clj API using monads at the foundation layer and implement for relational, nosql, etc. in infrastructure?
-        * http://rea.tech/the-worst-thing-in-our-scala-code-futures/  ?
-        * Abstractions for creating/consuming lazy sequences?
-        * Abstractions for aggregating a sequence of database results into a map[concatinated-key value(s)]
-
-## Provisional ideas for 1.0
-
-* Figure out how to isolate namespaces and their dependencies at the classpath level, including runtime reloading and evolution semantics after the fashion of OSGi at the REPL or in a running application.
-* Update and include clojure.osgi for clean deployment into OSGi frameworks?
-* Deploy to Clojars?
-
-
-# Why clj-foundation?
+## Why clj-foundation?
 
 clj-foundation supplies namespaces making additional simple things easy and hard things possible in Clojure that are intended for use across all Clojure projects at Brad's Deals.
 
@@ -52,7 +8,16 @@ clj-foundation supplies namespaces making additional simple things easy and hard
 * Enables programming using a monadic style without requiring explicit monad types.
 * Describes, specifies, and illustrates best practices at Brad's Deals for working in Clojure.
 * The only dependencies are Clojure, Potemkin, and Schema in order to minimize adoption friction.
-    * *(This is up for renegotiation for 1.0)*
+
+## Other Clojure foundational libraries that compliment this one
+
+* Hara: http://docs.caudate.me/hara/index.html
+
+## High-quality domain-specific libraries complimenting this
+
+* Cassandra as a mutable, versioned map: https://github.com/MyPost/cassius
+* Git from the Clojure REPL: https://github.com/zcaudate/gita
+
 
 # Features
 
@@ -167,8 +132,8 @@ where "version" currently is "[![Release](http://jitpack.io/v/com.github.shopsma
 <repositories>
   <repository>
     <id>jitpack.io</id>
-	<name>Jitpack repo</name>
-	<url>https://jitpack.io</url>
+    <name>Jitpack repo</name>
+    <url>https://jitpack.io</url>
   </repository>
 </repositories>
 ```
@@ -186,6 +151,53 @@ $ lein jar
 # Test
 $ lein with-profile test test
 ```
+
+
+# Definition of Done for 1.0 release
+
+* On APIs - While 1.0 will be a major release with some inevitable API breakage, we will strive:
+    * To maintain API compatiblity with prior releases to the greatest extent possible
+    * To remove duplicated functionality (which may contradict the API compatibility principle)
+    * To maintain API compatibility with code copied from internal Brad's Deals projects to the greatest extent possible.
+    * Clear naming convention for namespaces that are provisional (non-frozen, WIP) API.
+
+* Known tech debt that may influence APIs
+    * Consider migrating db.clj's local configuration mechanism to config.clj (and then make an instance of the generic implementation inside db.clj)
+
+* Target Clojure 1.9
+    * All functions will have type information supplied via Clojure 1.9 specs.
+    * Functions currently using plumatic/schema to specify type constraints will be migrated to Specs
+
+* On testing
+    * All functions will be unit tested using a style designed to illustrate behavior under failure modes as well as happy path scenarios.
+    * We will collectively agree on a style of testing that seems to hit the sweet spot between overspecification and underspecification.
+        * (Details are not set in stone but definitely up for negotiation)
+    * When defects are detected, we will first reproduce the defect's root cause using a failing test case that will prevent the defect from reoccurring without the test notifying us.
+    * Generative testing with Specs
+    * Integrate kbitz (suggest Clojure idioms), some Clojure linting library; if it's easy to make these available to clients of clj-foundation, do so.
+
+* Debug library
+    * dbg, ppdbg macros
+    * trace?
+
+* Documentation
+    * Machine generate as much as possible?
+
+* Make clj_infrastructure as a separate library
+    * Move db.clj there?
+    * Abstract db.clj API using monads at the foundation layer and implement for relational, nosql, etc. in infrastructure?
+        * http://rea.tech/the-worst-thing-in-our-scala-code-futures/  ?
+        * Abstractions for creating/consuming lazy sequences?
+        * Abstractions for aggregating a sequence of database results into a map[concatinated-key value(s)]
+
+## Provisional ideas for 1.0
+
+* Figure out how to isolate namespaces and their dependencies at the classpath level, including runtime reloading and evolution semantics after the fashion of OSGi at the REPL or in a running application.
+* Update and include clojure.osgi for clean deployment into OSGi frameworks?
+* Deploy to Clojars?
+
+
+
 
 ## License
 
