@@ -167,7 +167,7 @@
   (fn [f & args] (apply retry tries pause-millis f args)))
 
 
-;; Retry calling fn with a specified timeout; abort early if abort? returns truthy --
+;; Retry calling fn with a specified timeout; abort early if abort?-fn returns truthy
 
 
 (def TIMEOUT-ERROR
@@ -232,7 +232,7 @@
      abort?-fn      :- (=> s/Bool [[Throwable]])])
 
 
-(s/defn retry-with-timeout :- s/Any
+(s/defn ^:always-validate retry-with-timeout :- s/Any
   "Retry (apply f args) up to tries times with pause-millis time in between invocation and a
   timeout value of timeout-millis.  On failure, abort?-fn is called with a vector containing the
   unwrapped exception stack.
@@ -253,6 +253,8 @@
    settings       :- RetrySettings
    f              :- (=> s/Any [s/Any])
    & args         :- [s/Any]]
+
+  (s/validate RetrySettings settings)
 
   (let [tries          (:tries settings)
         timeout-millis (:timeout-millis settings)
