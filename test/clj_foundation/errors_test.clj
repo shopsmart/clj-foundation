@@ -7,7 +7,8 @@
             [clj-foundation.data :refer [any?]]
             [clj-foundation.patterns :as p]
             [clj-foundation.millis :as millis])
-  (:import [java.util Date]))
+  (:import [java.util Date]
+           [clojure.lang ExceptionInfo]))
 
 
 (common/register-fixtures)
@@ -157,41 +158,101 @@
 
 
 (deftest retry-with-timeout-test
-  (testing "Success -> Results!!!"
-    (is (= "Results!!!"
-           (retry-with-timeout
-            "Success"
-            (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
-            (constantly "Results!!!")))))
+  (testing "nil arguments throw ExceptionInfo"
+    (testing "nil in main argument list"
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    nil
+                    (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
+                    (constantly "nil not allowed!"))))
 
-  (testing "Taking too much time fails!"
-    (is (instance? RuntimeException
-                   (try*
-                    (retry-with-timeout
-                     "Sloooow"
-                     (->RetrySettings 3 (millis/<-seconds 1) 50 (constantly false))
-                     #(Thread/sleep (millis/<-seconds 2)))))))
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    nil
+                    (constantly "nil not allowed!"))))
 
-  (testing "Fatal errors abort retrying"
-    (is (instance? RuntimeException
-                   (try*
-                    (retry-with-timeout
-                     "Ooops..."
-                     (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly true))
-                     #(throw (RuntimeException.)))))))
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
+                    nil))))
 
-  (testing "If at first you don't succeed, try, try again..."
-    (let [attempts (atom 0)
-          job-fn (fn []
-                   (swap! attempts inc)
-                   (when (< @attempts 2) (throw (RuntimeException. "Not this time")))
-                   "Finally--success!")]
-      (is (= "Finally--success!"
+    (testing "nil in RetrySettings"
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    (->RetrySettings nil (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
+                    (constantly "nil not allowed!"))))
+
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    (->RetrySettings 1 nil (millis/<-seconds 5) (constantly false))
+                    (constantly "nil not allowed!"))))
+
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    (->RetrySettings 1 (millis/<-seconds 1) nil (constantly false))
+                    (constantly "nil not allowed!"))))
+
+      (is (thrown? ExceptionInfo
+                   (retry-with-timeout
+                    "nil throws!"
+                    (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) nil)
+                    (constantly "nil not allowed!"))))))
+
+  (testing "Happy paths: "
+    (testing "Success -> Results!!!"
+      (is (= "Results!!!"
              (retry-with-timeout
-              "Persistance pays off"
-              (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
-              job-fn)))
-      (is (= 2 @attempts)))))
+              "Success"
+              (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
+              (constantly "Results!!!")))))
+
+    (testing "If at first you don't succeed, try, try again..."
+      (let [attempts (atom 0)
+            job-fn (fn []
+                     (swap! attempts inc)
+                     (when (< @attempts 2) (throw (RuntimeException. "Not this time")))
+                     "Finally--success!")]
+        (is (= "Finally--success!"
+               (retry-with-timeout
+                "Persistance pays off"
+                (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
+                job-fn)))
+        (is (= 2 @attempts)))))
+
+  (testing "Sad paths: "
+    (testing "Taking too much time fails when abort?-fn is (constantly false)!"
+      (is (thrown? RuntimeException
+                   (retry-with-timeout
+                    "Sloooow"
+                    (->RetrySettings 3 (millis/<-seconds 1) 50 (constantly false))
+                    #(Thread/sleep (millis/<-seconds 2))))))
+
+    (testing "Taking too much time fails--even with retries! (Note: timeouts are not exceptions so abort?-fn is not relevant)"
+      (let [total-tries (atom 0)]
+        (is (thrown? RuntimeException
+                     (retry-with-timeout
+                      "Sloooow"
+                      (->RetrySettings 3 (millis/<-seconds 1) 50 (constantly true))
+                      (fn []
+                        (swap! total-tries inc)
+                        (Thread/sleep (millis/<-seconds 2))))))
+        (is (= 4 @total-tries))))
+
+    (testing "Fatal errors abort retrying"
+      (let [total-tries (atom 0)]
+        (is (thrown? RuntimeException
+                     (retry-with-timeout
+                      "Ooops..."
+                      (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly true))
+                      (fn []
+                        (swap! total-tries inc)
+                        (throw (RuntimeException.))))))
+        (is (= 1 @total-tries))))))
 
 
 ;; (dis)allowed values ------------------------------------------------------------------
@@ -220,4 +281,4 @@
 
 
 
-(run-tests)
+;(run-tests)
