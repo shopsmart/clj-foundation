@@ -72,7 +72,9 @@
   [failure :- (s/pred failure? "(failure? failure) is truthy")]
   (cond
     (seq? failure)                (map exception<- failure)
-    (instance? Throwable failure) (lazy-seq (cons failure (seq<- (.getCause failure))))
+    (instance? Throwable failure) (if (instance? Iterable failure)
+                                    (seq failure)
+                                    (lazy-seq (cons failure (seq<- (.getCause failure)))))
     (not (nil? failure))          (seq<- (exception<- failure))))
 
 
