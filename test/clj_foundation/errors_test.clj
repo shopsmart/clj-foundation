@@ -106,24 +106,41 @@
           after   (.getTime (Date.))
           time    (- after before)]
 
-    (is (instance? IllegalStateException result))
-    (is (< timeout time)))))
+     (is (instance? IllegalStateException result))
+     (is (< timeout time)))))
 
 
 (deftest retry?-test
-  (testing "Retry up to :max-retries times"
-    (let [r0 (new-default-job "timeout-test"
-                              3
-                              (millis/<-seconds 0.25)
-                              (constantly false))
-          r1 (update-in r0 [:retries] inc)
-          r2 (update-in r1 [:retries] inc)
-          r3 (update-in r2 [:retries] inc)]
+  (testing "Retry up to :max-retries times: "
+    (testing "too many timeouts"
+      (let [r0 (new-default-job "timeout-test"
+                                3
+                                (millis/<-seconds 0.25)
+                                (constantly false))
+            r1 (update-in r0 [:retries] inc)
+            r2 (update-in r1 [:retries] inc)
+            r3 (update-in r2 [:retries] inc)]
 
-      (is (= :RETRY-TIMEOUT     (retry? r0 TIMEOUT-ERROR)))
-      (is (= :RETRY-TIMEOUT     (retry? r1 TIMEOUT-ERROR)))
-      (is (= :RETRY-TIMEOUT     (retry? r2 TIMEOUT-ERROR)))
-      (is (= :ABORT-MAX-RETRIES (retry? r3 TIMEOUT-ERROR)))))
+        (is (= :RETRY-TIMEOUT     (retry? r0 TIMEOUT-ERROR)))
+        (is (= :RETRY-TIMEOUT     (retry? r1 TIMEOUT-ERROR)))
+        (is (= :RETRY-TIMEOUT     (retry? r2 TIMEOUT-ERROR)))
+        (is (= :ABORT-MAX-RETRIES (retry? r3 TIMEOUT-ERROR))))
+
+      (testing "too many errors"
+        (let [r0 (new-default-job "Too man errors test"
+                                  3
+                                  (millis/<-seconds 0.25)
+                                  (constantly false))
+              r1 (update-in r0 [:retries] inc)
+              r2 (update-in r1 [:retries] inc)
+              r3 (update-in r2 [:retries] inc)
+              e  (Exception. "Something bad happened!")]
+
+          (is (= :RETRY-FAILURE     (retry? r0 e)))
+          (is (= :RETRY-FAILURE     (retry? r1 e)))
+          (is (= :RETRY-FAILURE     (retry? r2 e)))
+          (is (= :ABORT-MAX-RETRIES (retry? r3 e)))))))
+
 
   (testing "Abort on fatal errors"
     (let [r0 (new-default-job "abort-test"
@@ -211,18 +228,42 @@
               (->RetrySettings 1 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
               (constantly "Results!!!")))))
 
-    (testing "If at first you don't succeed, try, try again..."
-      (let [attempts (atom 0)
-            job-fn (fn []
-                     (swap! attempts inc)
-                     (when (< @attempts 2) (throw (RuntimeException. "Not this time")))
-                     "Finally--success!")]
-        (is (= "Finally--success!"
-               (retry-with-timeout
-                "Persistance pays off"
-                (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly false))
-                job-fn)))
-        (is (= 2 @attempts)))))
+    (testing "If at first you don't succeed, try, try again...: "
+      (testing "With failures."
+        (let [attempts              (atom 0)
+              start                 (System/currentTimeMillis)
+              timeout-time          (millis/<-seconds 1)
+              pause-time            (millis/<-seconds 5)
+              expected-elapsed-time pause-time
+              job-fn                (fn []
+                                      (swap! attempts inc)
+                                      (when (< @attempts 2) (throw (RuntimeException. "Not this time")))
+                                      "Finally--success!")]
+          (is (= "Finally--success!"
+                 (retry-with-timeout
+                  "Persistance pays off"
+                  (->RetrySettings 3 timeout-time pause-time (constantly false))
+                  job-fn)))
+          (is (= 2 @attempts))
+          (is (<= expected-elapsed-time (- (System/currentTimeMillis) start)))))
+
+      (testing "with timeouts."
+        (let [attempts              (atom 0)
+              start                 (System/currentTimeMillis)
+              timeout-time          (millis/<-seconds 1)
+              pause-time            (millis/<-seconds 5)
+              expected-elapsed-time (+ timeout-time pause-time)
+              job-fn                (fn []
+                                      (swap! attempts inc)
+                                      (when (< @attempts 2) (Thread/sleep (+ timeout-time 500)))
+                                      "Finally--success!")]
+          (is (= "Finally--success!"
+                 (retry-with-timeout
+                  "Persistance pays off"
+                  (->RetrySettings 3 timeout-time pause-time (constantly false))
+                  job-fn)))
+          (is (= 2 @attempts))
+          (is (<= expected-elapsed-time (- (System/currentTimeMillis) start)))))))
 
   (testing "Sad paths: "
     (testing "Taking too much time fails when abort?-fn is (constantly false)!"
@@ -243,15 +284,26 @@
                         (Thread/sleep (millis/<-seconds 2))))))
         (is (= 4 @total-tries))))
 
+    (testing "Too many retries fails"
+      (let [total-tries (atom 0)]
+        (is (thrown? Exception
+                     (retry-with-timeout
+                      "Boom"
+                      (->RetrySettings 3 (millis/<-seconds 1) 50 (constantly false))
+                      (fn []
+                        (swap! total-tries inc)
+                        (throw (Exception.))))))
+        (is (= 4 @total-tries))))
+
     (testing "Fatal errors abort retrying"
       (let [total-tries (atom 0)]
-        (is (thrown? RuntimeException
+        (is (thrown? Exception
                      (retry-with-timeout
                       "Ooops..."
                       (->RetrySettings 3 (millis/<-seconds 1) (millis/<-seconds 5) (constantly true))
                       (fn []
                         (swap! total-tries inc)
-                        (throw (RuntimeException.))))))
+                        (throw (Exception.))))))
         (is (= 1 @total-tries))))))
 
 
@@ -281,4 +333,4 @@
 
 
 
-;(run-tests)
+(run-tests)

@@ -206,12 +206,10 @@
   (let [job-abort?       (:abort?-fn job)
         result-exception (exception<- failure-value)]
     (cond
-      (timeout? failure-value)              (if (< (:retries job) (:max-retries job))
-                                              :RETRY-TIMEOUT
-                                              :ABORT-MAX-RETRIES)
-
-      (job-abort? (seq<- result-exception))   :ABORT-FATAL-ERROR
-      :else                                   :RETRY-FAILURE)))
+      (<= (:max-retries job) (:retries job)) :ABORT-MAX-RETRIES
+      (timeout? failure-value)               :RETRY-TIMEOUT
+      (job-abort? (seq<- result-exception))  :ABORT-FATAL-ERROR
+      :else                                  :RETRY-FAILURE)))
 
 
 (defn new-default-job
@@ -267,8 +265,10 @@
             (case (retry? j result)
               :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
               :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
-              :RETRY-FAILURE     (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
-              :RETRY-TIMEOUT     (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+              :RETRY-FAILURE     (do (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+                                     (Thread/sleep pause-millis))
+              :RETRY-TIMEOUT     (do (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+                                     (Thread/sleep pause-millis))
               :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
             (recur (update-in j [:retries] inc)))
           result)))))
