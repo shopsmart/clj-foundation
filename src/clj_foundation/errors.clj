@@ -265,8 +265,10 @@
         (if (failure? result)
           (do
             (case (retry? j result)
-              :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
-              :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :ABORT-MAX-RETRIES (do (log/error (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+                                     (throw result))
+              :ABORT-FATAL-ERROR (do (log/error (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+                                     (throw result))
               :RETRY-FAILURE     (do (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
                                      (Thread/sleep pause-millis))
               :RETRY-TIMEOUT     (do (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
