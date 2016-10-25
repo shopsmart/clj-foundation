@@ -72,7 +72,9 @@
   [failure :- (s/pred failure? "(failure? failure) is truthy")]
   (cond
     (seq? failure)                (map exception<- failure)
-    (instance? Throwable failure) (lazy-seq (cons failure (seq<- (.getCause failure))))
+    (instance? Throwable failure) (if (instance? Iterable failure)
+                                    (seq failure)
+                                    (lazy-seq (cons failure (seq<- (.getCause failure)))))
     (not (nil? failure))          (seq<- (exception<- failure))))
 
 
@@ -263,8 +265,10 @@
         (if (failure? result)
           (do
             (case (retry? j result)
-              :ABORT-MAX-RETRIES (throw     (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
-              :ABORT-FATAL-ERROR (throw     (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :ABORT-MAX-RETRIES (do (log/error (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+                                     (throw result))
+              :ABORT-FATAL-ERROR (do (log/error (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+                                     (throw result))
               :RETRY-FAILURE     (do (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
                                      (Thread/sleep pause-millis))
               :RETRY-TIMEOUT     (do (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
