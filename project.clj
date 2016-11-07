@@ -11,8 +11,9 @@
             [lein-kibit "0.1.2"]          ; lein kibit - Linter that suggests more idiomatic forms
             ]
 
-  ;; Used in clj-foundation.config unit tests
-  :jvm-opts ["-DCONFIG-PROD=/tmp/_test-config-prod.edn -Dlog4j.configurationFile=log4j2-subproject.xml"]
+  :repl
+  {;; Used in clj-foundation.config unit tests
+   :jvm-opts ["-DCONFIG-PROD=/tmp/_test-config-prod.edn -Dlog4j.configurationFile=log4j2-subproject.xml"]}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.3.1"]
