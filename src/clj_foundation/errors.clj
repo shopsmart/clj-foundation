@@ -134,8 +134,8 @@
         res
         (do
           (if (instance? Throwable res)
-            (log/error res "A failure occurred; retrying...")
-            (log/error (str "A failure occurred; retrying...  [" (pr-str res) "]")))
+            (log/warn res "A failure occurred; retrying...")
+            (log/warn (str "A failure occurred; retrying...  [" (pr-str res) "]")))
           (Thread/sleep pause-millis)
           (recur (dec tries) pause-millis f args))))))
 
@@ -152,7 +152,7 @@
                      {:exception e})))]
     (if (:exception res)
       (do
-        (log/error (:exception res) "A failure occurred; retrying...")
+        (log/warn (:exception res) "A failure occurred; retrying...")
         (Thread/sleep pause-millis)
         (recur (dec tries) pause-millis f args))
       (:value res))))
@@ -265,15 +265,15 @@
         (if (failure? result)
           (do
             (case (retry? j result)
-              :ABORT-MAX-RETRIES (do (log/error (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+              :ABORT-MAX-RETRIES (do (log/warn (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :ABORT-FATAL-ERROR (do (log/error (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :ABORT-FATAL-ERROR (do (log/warn (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :RETRY-FAILURE     (do (log/error result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+              :RETRY-FAILURE     (do (log/warn result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
                                      (Thread/sleep pause-millis))
-              :RETRY-TIMEOUT     (do (log/error (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+              :RETRY-TIMEOUT     (do (log/warn (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
                                      (Thread/sleep pause-millis))
-              :else              (throw     (IllegalStateException. "Program Error!  We should never get here.")))
+              :else              (throw (IllegalStateException. "Program Error!  We should never get here.")))
             (recur (update-in j [:retries] inc)))
           result)))))
 
