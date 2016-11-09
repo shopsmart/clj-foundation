@@ -15,7 +15,7 @@
 
 
 (deftest trace-test
-  (let [result (io/with-out-string (trace "testing 123"))]
+  (let [result (with-out-str (trace "testing 123"))]
     (testing "result contains ns, line, and column of trace message"
       (is (.contains (str *ns*) result))
       (is (.contains ":line" result))

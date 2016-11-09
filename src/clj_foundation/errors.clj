@@ -1,5 +1,7 @@
 (ns clj-foundation.errors
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [io.aviso.exception :as prettyexception]
             [clj-foundation.patterns :refer :all]
             [clj-foundation.millis :as millis]
             [schema.core :as s :refer [=> =>*]])
@@ -10,6 +12,7 @@
 
 
 ;; Traceability ---------------------------------------------------------------------
+
 
 (defmacro trace
   "Like str but prepends the namespace and line/column of the call site."
@@ -84,12 +87,30 @@
 
 
 (s/defn stack-trace<- :- s/Str
-  "Returns the stack trace associated with e as a String."
+  "Returns the stack trace(s) associated with e and its (.getCause)s as a String."
   [e :- Throwable]
-  (let [output (java.io.ByteArrayOutputStream.)
-        printer (java.io.PrintStream. output)]
-    (.printStackTrace e printer)
-    (.toString output)))
+  (binding [prettyexception/*fonts* nil
+            prettyexception/*traditional* true]
+    (->> e
+         (seq<-)
+         (map prettyexception/format-exception)
+         (str/join "\n==>\n"))))
+
+
+(s/defn log-string :- s/Str
+  "Create a log string from a sequence of log objects.  Parameters are reordered
+  so that non-Throwables are first followed by Throwable objects.  Non-Throwables
+  are returned as their toString representation separated by commas.  Throwables
+  are represented by their stack traces, separated by \"\n==>\n\"."
+  [log-objects :- [s/Any]]
+  (let [{exceptions true
+         others     false} (group-by #(instance? Throwable %) log-objects)
+        messages           (str/join ", "   (map str others))
+        stack-traces       (str/join "\n\n" (map stack-trace<- exceptions))]
+    (str messages "\n" stack-traces)))
+
+
+(defn warn [& warnings] (log/warn (log-string warnings)))
 
 
 (defmacro try*
@@ -134,8 +155,8 @@
         res
         (do
           (if (instance? Throwable res)
-            (log/warn res "A failure occurred; retrying...")
-            (log/warn (str "A failure occurred; retrying...  [" (pr-str res) "]")))
+            (warn res "A failure occurred; retrying...")
+            (warn (str "A failure occurred; retrying...  [" (pr-str res) "]")))
           (Thread/sleep pause-millis)
           (recur (dec tries) pause-millis f args))))))
 
@@ -152,7 +173,7 @@
                      {:exception e})))]
     (if (:exception res)
       (do
-        (log/warn (:exception res) "A failure occurred; retrying...")
+        (warn (:exception res) "A failure occurred; retrying...")
         (Thread/sleep pause-millis)
         (recur (dec tries) pause-millis f args))
       (:value res))))
@@ -265,13 +286,13 @@
         (if (failure? result)
           (do
             (case (retry? j result)
-              :ABORT-MAX-RETRIES (do (log/warn (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+              :ABORT-MAX-RETRIES (do (warn (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :ABORT-FATAL-ERROR (do (log/warn (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :ABORT-FATAL-ERROR (do (warn (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :RETRY-FAILURE     (do (log/warn result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+              :RETRY-FAILURE     (do (warn result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
                                      (Thread/sleep pause-millis))
-              :RETRY-TIMEOUT     (do (log/warn (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+              :RETRY-TIMEOUT     (do (warn (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
                                      (Thread/sleep pause-millis))
               :else              (throw (IllegalStateException. "Program Error!  We should never get here.")))
             (recur (update-in j [:retries] inc)))
