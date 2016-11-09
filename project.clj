@@ -19,6 +19,7 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [org.slf4j/slf4j-api "1.7.21"]
                  [org.slf4j/slf4j-simple "1.7.21"]
+                 [io.aviso/pretty "0.1.30"]
                  [org.clojure/data.csv "0.1.3"]
                  [org.clojure/data.xml "0.0.8"]
                  [prismatic/schema "1.1.1"]

@@ -1,5 +1,6 @@
 (ns clj-foundation.errors
   (:require [clojure.tools.logging :as log]
+            [io.aviso.exception :as prettyexception]
             [clj-foundation.patterns :refer :all]
             [clj-foundation.millis :as millis]
             [schema.core :as s :refer [=> =>*]])
@@ -10,6 +11,7 @@
 
 
 ;; Traceability ---------------------------------------------------------------------
+
 
 (defmacro trace
   "Like str but prepends the namespace and line/column of the call site."
@@ -86,10 +88,9 @@
 (s/defn stack-trace<- :- s/Str
   "Returns the stack trace associated with e as a String."
   [e :- Throwable]
-  (let [output (java.io.ByteArrayOutputStream.)
-        printer (java.io.PrintStream. output)]
-    (.printStackTrace e printer)
-    (.toString output)))
+  (binding [prettyexception/*fonts* nil
+            prettyexception/*traditional* true]
+    (prettyexception/format-exception e)))
 
 
 (defmacro try*
