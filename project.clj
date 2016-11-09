@@ -11,8 +11,6 @@
             [lein-kibit "0.1.2"]          ; lein kibit - Linter that suggests more idiomatic forms
             ]
 
-  :repl {:jvm-opts ["-Dlog4j.configurationFile=log4j2-subproject.xml"]}
-
   ;; Used in clj-foundation.config unit tests
   :jvm-opts ["-DCONFIG-PROD=/tmp/_test-config-prod.edn"]
 
