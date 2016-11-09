@@ -22,16 +22,6 @@
        ~@body)))
 
 
-(defmacro with-out-string
-  "Evaluate body, capturing *out* to a string.  Returns contents of string."
-  [f & body]
-  `(let [baos# (ByteArrayOutputStream.)]
-     (with-open [stream# (clojure.java.io/writer baos#)]
-       (binding [*out* stream#]
-         ~@body))
-     (str baos#)))
-
-
 (s/defn string-input-stream :- InputStream
   "Return a java.io.InputStream containing the input string"
   [input :- s/Str]
