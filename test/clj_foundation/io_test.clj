@@ -14,6 +14,14 @@
 (common/register-fixtures)
 
 
+(deftest with-err-str-test
+  (testing "Printing to *out* doesn't wind up in with-err-str"
+    (is (= "" (with-err-str (print "to *out*")))))
+
+  (testing "Printing to *err* is returned in with-err-str"
+    (is (= "to *err*" (with-err-str (print-err "to *err*"))))))
+
+
 (deftest normalize-file-input-test
   (testing "If a string input references a resource, a resource URL is returned."
     (is (instance? URL (normalize-file-input "_test-config.edn")))
