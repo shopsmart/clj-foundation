@@ -19,8 +19,13 @@
     (is (= "" (with-err-str (print "to *out*")))))
 
   (testing "Printing to *err* is returned in with-err-str"
-    (is (= "to *err*" (with-err-str (print-err "to *err*"))))))
+    (is (= "to *err*" (with-err-str (print-stream *err* "to *err*"))))))
 
+(deftest string-output-stream-test
+  (testing "string-output-stream captures output"
+    (is (= "the output." (let [str-out (string-output-stream)]
+                           (print-stream str-out "the output.")
+                           (.toString str-out))))))
 
 (deftest normalize-file-input-test
   (testing "If a string input references a resource, a resource URL is returned."

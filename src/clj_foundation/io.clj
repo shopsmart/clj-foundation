@@ -22,26 +22,33 @@
        ~@body)))
 
 
+(defn string-output-stream
+  "Create a java.io.PrintStream whose .toString contains the data printed to it."
+  []
+  (let [byte-array-stream (ByteArrayOutputStream.)]
+    (proxy [PrintStream] [byte-array-stream]
+      (toString [] (str byte-array-stream)))))
+
+
 (defmacro with-err-str
   "Anything printed within body to *err* will be returned as a string."
   [& body]
-  `(let [stream#       (ByteArrayOutputStream.)
-         print-stream# (PrintStream. stream#)]
-     (binding [*err* print-stream#]
+  `(let [stream# (string-output-stream)]
+     (binding [*err* stream#]
        ~@body
        (str stream#))))
 
 
-(defmacro print-err
-  "Print to *err* stream"
-  [thing]
-  `(.print *err* ~thing))
+(defmacro print-stream
+  "Print thing to stream"
+  [stream thing]
+  `(.print ~stream ~thing))
 
 
-(defmacro println-err
-  "Println to *err* stream"
-  [thing]
-  `(.println *err* ~thing))
+(defmacro println-stream
+  "Println thing to stream"
+  [stream thing]
+  `(.println ~stream ~thing))
 
 
 (s/defn string-input-stream :- InputStream
