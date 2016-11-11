@@ -87,10 +87,11 @@
   (testing "Can replace the metalogger globally"
     (set-global-metalogger
      (fn [level & more]
-       (apply metalog level "OVERRIDDEN: " more)))
+       (apply metalog level "OVERRIDDEN:" more)))
 
-    (is (str/starts-with? "OVERRIDDEN:" (with-out-str
-                                          (log :warn "Three Blind Locusts"))))
+    (is (str/starts-with? (with-out-str
+                            (log :warn "Three Blind Locusts"))
+                          "OVERRIDDEN:"))
 
     (set-global-metalogger metalog)))
 
