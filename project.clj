@@ -1,4 +1,4 @@
-(defproject com.github.shopsmart/clj-foundation "0.9.21"
+(defproject com.github.shopsmart/clj-foundation "0.9.22"
   :description "Common patterns enabling simpler to be easier and harder to be possibler."
   :url "https://github.com/shopsmart/clj-foundation"
 
