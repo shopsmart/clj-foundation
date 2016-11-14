@@ -7,7 +7,7 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn])
 
-  (:import [java.io InputStream File ByteArrayInputStream ByteArrayOutputStream]
+  (:import [java.io InputStream File PrintWriter ByteArrayInputStream ByteArrayOutputStream]
            [java.net URI URL Socket]))
 
 
@@ -20,6 +20,37 @@
   `(with-open [stream# (clojure.java.io/writer ~f)]
      (binding [*out* stream#]
        ~@body)))
+
+
+(defn string-output-writer
+  "Create a java.io.PrintWriter whose .toString contains the data printed to it."
+  []
+  (let [byte-array-stream (ByteArrayOutputStream.)]
+    (proxy [PrintWriter] [byte-array-stream]
+      (toString []
+        (.flush this)
+        (str byte-array-stream)))))
+
+
+(defmacro with-err-str
+  "Anything printed within body to *err* will be returned as a string."
+  [& body]
+  `(let [stream# (string-output-writer)]
+     (binding [*err* stream#]
+       ~@body
+       (str stream#))))
+
+
+(defmacro print-writer
+  "Print thing to writer"
+  [stream thing]
+  `(.print ~stream ~thing))
+
+
+(defmacro println-writer
+  "Println thing to writer"
+  [stream thing]
+  `(.println ~stream ~thing))
 
 
 (s/defn string-input-stream :- InputStream

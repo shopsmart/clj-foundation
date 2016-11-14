@@ -1,10 +1,10 @@
 (ns clj-foundation.errors
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [io.aviso.exception :as prettyexception]
+  (:require [clojure.string          :as str]
+            [io.aviso.exception      :as prettyexception]
+            [io.aviso.ansi           :as ansi]
             [clj-foundation.patterns :refer :all]
-            [clj-foundation.millis :as millis]
-            [schema.core :as s :refer [=> =>*]])
+            [clj-foundation.millis   :as millis]
+            [schema.core             :as s :refer [=> =>*]])
 
   (:import [java.util Date])
 
@@ -97,6 +97,19 @@
          (str/join "\n==>\n"))))
 
 
+(defmacro try*
+  "A variant of try that translates exceptions into return values or a
+  specified default value.  Note that body must be a single statement.
+  If you need more than that, then wrap your statement inside a \"do\". "
+  ([body]
+   `(try ~body (catch Throwable e# e#)))
+  ([body default-value-if-failure]
+   `(try ~body (catch Throwable e# ~default-value-if-failure))))
+
+
+;; Metalog.  Because we can't depend on any log library without breaking clients. --
+
+
 (s/defn log-string :- s/Str
   "Create a log string from a sequence of log objects.  Parameters are reordered
   so that non-Throwables are first followed by Throwable objects.  Non-Throwables
@@ -110,17 +123,51 @@
     (str messages "\n" stack-traces)))
 
 
-(defn warn [& warnings] (log/warn (log-string warnings)))
+(def log-levels
+  "The log levels supported by the metalogger mapped to numbers matching the log4j
+  log levels.
+
+  The current log level keywords are: #{:trace :debug :info :warn :error :fatal}"
+  {:trace  5000
+   :debug 10000
+   :info  20000
+   :warn  30000
+   :error 40000
+   :fatal 50000})
 
 
-(defmacro try*
-  "A variant of try that translates exceptions into return values or a
-  specified default value.  Note that body must be a single statement.
-  If you need more than that, then wrap your statement inside a \"do\". "
-  ([body]
-   `(try ~body (catch Throwable e# e#)))
-  ([body default-value-if-failure]
-   `(try ~body (catch Throwable e# ~default-value-if-failure))))
+(defn metalog
+  "The default log implementation if none is specified:
+
+  * println levels < :error to *out*
+  * println levels >= :error to *err*"
+  [level-keyword & more]
+  (binding [*out* (if (< (level-keyword log-levels) (:error log-levels)) *out* *err*)]
+    (apply println more)))
+
+
+(def ^:dynamic *log*
+  "The current log implementation.  Defaults to the metalog function."
+  metalog)
+
+
+(s/defn set-global-metalogger :- s/Any
+  "Set the clj-foundation metalogger globally.  f must be a function of type
+  (=> s/Any [s/Keyword s/Any])"
+  [f :- (=> s/Any [s/Keyword s/Any])]
+  (alter-var-root #'*log* (constantly f)))
+
+
+(s/defn log :- s/Any
+  "Synopsis: (log :log-level & more)
+
+  The initial :log-level must be one of the keywords in log-levels.  The remainder
+  of the arguments are the objects that will be logged using log-string."
+  [level :- s/Keyword
+   & more :- [s/Any]]
+  (let [args (cond (sequential? more)  more
+                   :else              [more])]
+     (apply *log* level args)))
 
 
 ;; Various retry/timeout strategies ---------------------------------------------------
@@ -155,8 +202,8 @@
         res
         (do
           (if (instance? Throwable res)
-            (warn res "A failure occurred; retrying...")
-            (warn (str "A failure occurred; retrying...  [" (pr-str res) "]")))
+            (log :warn res "A failure occurred; retrying...")
+            (log :warn (str "A failure occurred; retrying...  [" (pr-str res) "]")))
           (Thread/sleep pause-millis)
           (recur (dec tries) pause-millis f args))))))
 
@@ -173,7 +220,7 @@
                      {:exception e})))]
     (if (:exception res)
       (do
-        (warn (:exception res) "A failure occurred; retrying...")
+        (log :warn (:exception res) "A failure occurred; retrying...")
         (Thread/sleep pause-millis)
         (recur (dec tries) pause-millis f args))
       (:value res))))
@@ -286,13 +333,13 @@
         (if (failure? result)
           (do
             (case (retry? j result)
-              :ABORT-MAX-RETRIES (do (warn (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
+              :ABORT-MAX-RETRIES (do (log :warn (RuntimeException. (str "MAX-RETRIES(" tries ")[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :ABORT-FATAL-ERROR (do (warn (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
+              :ABORT-FATAL-ERROR (do (log :warn (RuntimeException. (str "FATAL[" job-name "]: " (.getMessage result)) result))
                                      (throw result))
-              :RETRY-FAILURE     (do (warn result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
+              :RETRY-FAILURE     (do (log :warn result (str "RETRY[" job-name "]; " (type result) ": " (.getMessage result)))
                                      (Thread/sleep pause-millis))
-              :RETRY-TIMEOUT     (do (warn (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
+              :RETRY-TIMEOUT     (do (log :warn (RuntimeException. "Timeout.") (str "RETRY[" job-name "]: Took longer than " timeout-millis " ms."))
                                      (Thread/sleep pause-millis))
               :else              (throw (IllegalStateException. "Program Error!  We should never get here.")))
             (recur (update-in j [:retries] inc)))

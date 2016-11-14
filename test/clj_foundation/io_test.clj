@@ -14,6 +14,21 @@
 (common/register-fixtures)
 
 
+(deftest with-err-str-test
+  (testing "Printing to *out* doesn't wind up in with-err-str"
+    (is (= "" (with-err-str (print "to *out*")))))
+
+  (testing "Printing to *err* is returned in with-err-str"
+    (is (= "to *err*" (with-err-str (print-writer *err* "to *err*"))))))
+
+
+(deftest string-output-writer-test
+  (testing "string-output-writer captures output"
+    (is (= "the output." (let [str-out (string-output-writer)]
+                           (print-writer str-out "the output.")
+                           (.toString str-out))))))
+
+
 (deftest normalize-file-input-test
   (testing "If a string input references a resource, a resource URL is returned."
     (is (instance? URL (normalize-file-input "_test-config.edn")))

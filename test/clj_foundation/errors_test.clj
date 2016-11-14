@@ -2,11 +2,13 @@
   (:require [clojure.test :refer :all]
             [schema.core :as s :refer [=> =>*]]
             [clj-foundation.unit-test-common :as common]
-            [clj-foundation.io :as io]
+            [clj-foundation.io :as io :refer [with-err-str]]
             [clj-foundation.errors :refer :all]
             [clj-foundation.data :refer [any?]]
             [clj-foundation.patterns :as p]
-            [clj-foundation.millis :as millis])
+            [clj-foundation.millis :as millis]
+            [clj-foundation.errors :as err]
+            [clojure.string :as str])
   (:import [java.util Date]
            [clojure.lang ExceptionInfo]))
 
@@ -71,6 +73,27 @@
 
     (testing "ex-info :via maps are parsed"
       (is (= 5 (count (seq<- e5)))))))
+
+
+(deftest metalog-test
+  (testing "Warnings and below print to *out*"
+    (is (= "warning\n" (with-out-str
+                         (log :warn "warning")))))
+
+  (testing "Errors and above print to *err*"
+    (is (= "error\n"   (with-err-str
+                         (log :error "error")))))
+
+  (testing "Can replace the metalogger globally"
+    (set-global-metalogger
+     (fn [level & more]
+       (apply metalog level "OVERRIDDEN:" more)))
+
+    (is (str/starts-with? (with-out-str
+                            (log :warn "Three Blind Locusts"))
+                          "OVERRIDDEN:"))
+
+    (set-global-metalogger metalog)))
 
 
 (deftest expect-within-test
