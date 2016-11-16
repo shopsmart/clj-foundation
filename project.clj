@@ -1,4 +1,4 @@
-(defproject com.github.shopsmart/clj-foundation "0.9.22"
+(defproject com.github.shopsmart/clj-foundation "0.9.23"
   :description "Guiding opinions: Enhance the core language in resonable, useful, and conservative ways.
 Don't be a framework.  Rather, be a conservative set of generally-useful functions that may be used
 together or separately.  Make advanced topics like transducers and monads so easy that you don't have
