@@ -4,10 +4,10 @@
 
   Examples:
 
-  (grep 42         {:1 {:a 11} :2 {:b 42}})                ==> {:b 42}
-  (grep #\"[0-9]\" [{:a \"42\"} {:b \"Hello, world\"}])    ==> {:a \"42\"}
-  (grep \"world\"  [{:1 \"Hello\"} {:1 \"Hello, world\"}]) ==> {:1 \"Hello, world\"}
-  (grep zero?      [[1 2 3] [4 5 6] [7 8 9] [0 1 2]])      ==> [0 1 2]"
+  (grep 42         {:1 {:a 11} :2 {:b 42}})                => {:b 42}
+  (grep #\"[0-9]\" [{:a \"42\"} {:b \"Hello, world\"}])    => {:a \"42\"}
+  (grep \"world\"  [{:1 \"Hello\"} {:1 \"Hello, world\"}]) => {:1 \"Hello, world\"}
+  (grep zero?      [[1 2 3] [4 5 6] [7 8 9] [0 1 2]])      => [0 1 2]"
   (:require [clojure.zip :as zip]
             [clojure.set :as set]
             [clojure.string :as str]

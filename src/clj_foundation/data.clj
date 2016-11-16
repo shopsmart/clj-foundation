@@ -1,4 +1,10 @@
 (ns clj-foundation.data
+  "Convert data between various forms; provide useful guard functions.  For example:
+  * any? - Return coll if any element in coll satisfies predicate
+  * replace-nil - If value is not nil, return it, otherwise return replacement
+  * keywordize - Turn string or named value into an idiomatic Clojure :keyword
+  * ->SNAKE_CASE - Turn string or named value into a string in SNAKE_CASE form
+  * Various functions for parsing and processing XML"
   (:require [clojure.data.xml :as xml]
             [clojure.string :as str]
             [clj-foundation.patterns :as p :refer [types f]]

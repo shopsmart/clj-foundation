@@ -1,5 +1,6 @@
 (ns clj-foundation.caller
-  "Unified api for making synchronous and asynchronous requests.")
+  "Unified api for making synchronous and asynchronous requests.  The intent is to
+  unify calls to actor libraries along with other kinds of calls.")
 
 (def method-missing ::method-missing)
 
