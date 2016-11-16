@@ -1,5 +1,5 @@
 (ns clj-foundation.oo
-  "Simplify Java interop"
+  "Simplify Java object interop"
   (:require [clojure.string :as str]
             [clj-foundation.data :refer [keywordize getter]]))
 
@@ -45,17 +45,17 @@
 
 
 #_(defmacro object
-  "Create the Java object specified by clazz using the specified (optional) ctor-args vector as
-  constructor arguments and the field-values map to initialize JavaBean style properties.
+  "Create the Java object specified by clazz using the symbol in the map as the class name
+  and the vector it maps to as the constructor arguments.  Keyword/value elements in the map
+  are mapped to JavaBean style property setters.
 
   Wherever literal values are supplied, they are type checked by the macro at compile time.
 
   e.g.:
 
-  (object Customer [1] {:first-name \"John\" :last-name \"Doe\"})"
+  (object {Customer [ctor-parm-1 ctorm-param-n] :first-name \"John\" :last-name \"Doe\"})"
 
-  ([clazz field-values])
-  ([clazz ctor-args field-values]))
+    [obj-map])
 
 
 #_(defmacro set-fields!
@@ -65,3 +65,11 @@
   The keys in field-values may be :camelCase (without \"set\" at the beginning) or
   Clojure-style :hyphenated-words."
   [object field-values])
+
+
+#_(defmacro set-obj-map
+  [a & r]
+  "Close...  But code would look like:
+
+  (set-obj-map TransactionRequest. .amount 10.00 .orderId \"user42\")"
+  `(doto (~a) ~@(partition 2 r)))

@@ -1,8 +1,9 @@
 (ns clj-foundation.templates
   "Implements variable substitution into strings.  Variables are specified in the form
-  ${VAR}.  "
+  ${VAR}.  Then, the map {:VAR \"value\"} substitutes \"value\" into the string in place
+  of ${VAR}.  Also, given a string s can return the names of the variables that must be
+  resolved in s."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [schema.core :as s :refer [=> =>* defschema]]
             [clj-foundation.patterns :as p :refer [types nothing]]
             [clj-foundation.errors :as err :refer [try*]]

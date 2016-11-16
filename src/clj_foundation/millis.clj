@@ -1,5 +1,5 @@
 (ns clj-foundation.millis
-  "Convert various time values to milliseconds and back"
+  "Convert various time values to milliseconds and back.  Decompose millis to days, hours, minutes, and seconds."
   (:require [schema.core :as s :refer [=> =>*]]
             [clojure.string :as str :refer [trimr]]
             [clj-foundation.patterns :refer [let-map]]

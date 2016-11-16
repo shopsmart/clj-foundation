@@ -1,4 +1,6 @@
 (ns clj-foundation.conversions
+  "A 'convert' multimethod that can convert between arbitrary types.  Default implementations
+  are supplied for Clojure's built-in types."
   (:require [clj-foundation.errors :refer [failure? must-be]]
             [clj-foundation.patterns :as patterns]))
 

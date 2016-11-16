@@ -1,4 +1,8 @@
 (ns clj-foundation.io
+  "io address three primary concerns:
+  * Smoothing necessary Java interop for IO operations, particularly between strings and streams/writers
+  * Extending clojure.java.io to allow specifying an environment variable to use as the input source
+  * (de)Serializing Clojure data structures"
   (:require [schema.core :as s :refer [=> =>*]]
             [clj-foundation.errors :as err]
             [clj-foundation.templates :as template]

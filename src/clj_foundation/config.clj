@@ -1,4 +1,12 @@
 (ns clj-foundation.config
+  "Read configuration from an EDN file.  The EDN file's location is specified using an environment
+  variable (for specifying its location during test, staging or production deployments) as well as
+  a literal path or URL for specifying its location during development.  If the environment variable
+  is present, it overrides any absolute path.
+
+  In addition, the EDN file being used for configuration may contain template variables as defined
+  by the [[templates]] namespace.  Template variables may be resolved through the environment or through
+  keys and values specified in code."
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
             [clojure.pprint :refer [pprint]]

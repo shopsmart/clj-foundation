@@ -1,7 +1,13 @@
 (ns clj-foundation.errors
+  "What is an error?  Is nil an error?  (Not always, but...)  How can we describe functions
+  that might return a result or that might fail?  What about exceptions--they break referential
+  transparency, but lots of code throws them anyway.  What about functions that might need to
+  retry because some external actor (e.g.: the network) might have intermittent failures?
+
+  Error handling is rarely clean, but this namespace provides some handy utilities to
+  centralize some of the concerns and solve them once, reliably.  ;-)"
   (:require [clojure.string          :as str]
             [io.aviso.exception      :as prettyexception]
-            [io.aviso.ansi           :as ansi]
             [clj-foundation.patterns :refer :all]
             [clj-foundation.millis   :as millis]
             [schema.core             :as s :refer [=> =>*]])

@@ -1,9 +1,10 @@
 (ns clj-foundation.math
-  "Math abstractions.  Currently defines a protocol for numbers that can be decomposed into constituant parts.
+  "Math abstractions.  Currently defines a protocol and type for mixed numbers.  Provides a sane
+  replacement for clojure.core.rationalize! that always returns a rational number.
 
-  This is then used to define a schema for Mixed Numbers and a MixedNumber type.  The MixedNumber can
-  more rationally render Clojure's Rational type as strings, but can also be used to decompose
-  decimals or rationals > 1 into mixed numbers with easy access to the whole and fractional parts."
+  MixedNumber can then more rationally render Clojure's Rational type as strings, but can also be
+  used to decompose decimals or rationals > 1 into mixed numbers with easy access to the whole and
+  fractional parts."
 
   (require [clj-foundation.patterns :refer [let-map]]
            [schema.core :as s :refer [=> =>* defschema]])

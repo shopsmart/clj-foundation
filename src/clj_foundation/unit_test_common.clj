@@ -1,15 +1,17 @@
 (ns clj-foundation.unit-test-common
+  "A common place to put code that we always want to run before / after tests."
   (:require [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
+            [clj-foundation.errors :refer [log]]
             [schema.core :as s :refer [=> =>*]])
   (:import  [java.util TimeZone]))
 
+
 (defn common-once-setup
-  "Setup code applicable to all unit tests"
+  "Setup code applicable to all unit tests.  By default we turn Specs library function validation on."
   []
   ;; Set time zone to UTC to normalize timestamps, remove the need for DST conversions,
   ;; and to allow unit tests to run with the same timezone as jobs / application code
-  (log/debug "Running [ONCE] common unit test setup")
+  (log :debug "Running [ONCE] common unit test setup")
   (TimeZone/setDefault (TimeZone/getTimeZone "UTC"))
   (s/set-compile-fn-validation! true))
 
@@ -17,19 +19,19 @@
 (defn common-once-cleanup
   "Tear down / cleanup code common to all unit tests"
   []
-  (log/debug "Running [ONCE] common unit test cleanup / tear down"))
+  (log :debug "Running [ONCE] common unit test cleanup / tear down"))
 
 
 (defn common-each-setup
   "Setup code applicable to all unit tests"
   []
-  (log/debug "Running [EACH] common unit test setup"))
+  (log :debug "Running [EACH] common unit test setup"))
 
 
 (defn common-each-cleanup
   "Setup code applicable to all unit tests"
   []
-  (log/debug "Running [EACH] common unit test cleanup / tear down"))
+  (log :debug "Running [EACH] common unit test cleanup / tear down"))
 
 
 (defn common-once-test-fixture
@@ -53,6 +55,6 @@
 ; Fixture registration: runs when the file is included / compiled
 
 (defn register-fixtures []
-  (log/debug "Registering unit test fixtures")
+  (log :debug "Registering unit test fixtures")
   (use-fixtures :once common-once-test-fixture)
   (use-fixtures :each common-each-test-fixture))

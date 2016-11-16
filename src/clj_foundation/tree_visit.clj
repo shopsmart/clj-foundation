@@ -1,5 +1,7 @@
 (ns clj-foundation.tree-visit
-  "Visitor pattern implementation for arbitrary Clojure data structures."
+  "Traverse arbitrary Clojure data structures using a visitor (cursor).
+
+  Thanks to: http://www.ibm.com/developerworks/library/j-treevisit/"
   (:require [clojure.zip :as zip]
             [clojure.set :as set]
             [clj-foundation.patterns :as p])
@@ -7,8 +9,6 @@
            [java.util Map Map$Entry])
   (:gen-class))
 
-;;---------------------------------------------------------------------------------
-;; Thanks to: http://www.ibm.com/developerworks/library/j-treevisit/
 
 (defmulti tree-branch? class)
 (defmethod tree-branch? :default [_] false)

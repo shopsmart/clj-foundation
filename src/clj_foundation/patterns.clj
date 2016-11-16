@@ -1,4 +1,10 @@
 (ns clj-foundation.patterns
+  "Patterns DRY up code and provide a vocabulary for conversation.  This package helps Clojure deal with
+  types from Java, makes it easier to build maps that represent abstract data types, provides functional
+  programming utilities, and adds a Nothing type that behaves as an identity value for maps, sequences,
+  and strings under their various concatination operations.  (For Category theorists, it's a monadic zero
+  for these types under concatination and mapcat.)  It also provides Nothing constants for cases where
+  Nothing means 'error', 'no result', or simply 'use default settings'."
   (:require [schema.core :as s :refer [=> =>*]]
             [clojure.string :as str]
             [potemkin :refer [def-map-type]])
