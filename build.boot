@@ -16,9 +16,6 @@ to know when you're using them.  Use a small set of common-sense dependencies to
 
 (set-env! :resource-paths #{"resources"}
           :source-paths   #{"src"}
-          :repositories #(conj % ["clojars-push" {:url "https://clojars.org/repo/"
-                                                  :username (System/getenv "CLOJARS_USER")
-                                                  :password (System/getenv "CLOJARS_PASS")}])
 
           :dependencies   '[[org.clojure/clojure       "1.8.0"]
                             [clojure-future-spec       "1.9.0-alpha14"]
