@@ -1,0 +1,4 @@
+language: clojure
+
+install: true
+
