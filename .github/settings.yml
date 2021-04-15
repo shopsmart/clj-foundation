@@ -1,8 +1,8 @@
 repository:
   name: clj-foundation
-  description: Make simple things easy and hard things possible in Clojure
+  description: "**DEPRECATED** Make simple things easy and hard things possible in Clojure"
   homepage: ''
-  topics: ''
+  topics: deprecated,obselete,archived
   private: false
   has_issues: true
   has_projects: true
