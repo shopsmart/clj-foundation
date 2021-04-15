@@ -1,0 +1,5 @@
+.github/settings.yml  @shopsmart/tech-ops-team
+
+# Everything needs to be approved through the data team
+*        @shopsmart/data-team
+
