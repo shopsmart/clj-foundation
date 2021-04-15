@@ -1,0 +1,48 @@
+repository:
+  name: clj-foundation
+  description: "**DEPRECATED** Make simple things easy and hard things possible in Clojure"
+  homepage: ''
+  topics: deprecated,obselete,archived
+  private: false
+  has_issues: true
+  has_projects: true
+  has_wiki: true
+  has_downloads: true
+  default_branch: main
+  allow_squash_merge: true
+  allow_merge_commit: true
+  allow_rebase_merge: true
+  enable_automated_security_fixes: false
+  enable_vulnerability_alerts: true
+teams:
+  - name: data-team
+    permission: admin
+  - name: deploy
+    permission: pull
+  - name: developers
+    permission: push
+  - name: tech-ops-team
+    permission: admin
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: false
+        require_code_owner_reviews: true
+        dismissal_restrictions: {}
+      required_status_checks: null
+      required_linear_history: false
+      enforce_admins: false
+      restrictions: null
+  - name: '*-base'
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: false
+        require_code_owner_reviews: true
+        dismissal_restrictions: {}
+      required_status_checks: null
+      enforce_admins: false
+      required_linear_history: false
+      restrictions: null
