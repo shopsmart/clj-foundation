@@ -1,4 +1,4 @@
-# clj-foundation
+# **DEPRECATED** clj-foundation
 
 ## Why clj-foundation?
 
